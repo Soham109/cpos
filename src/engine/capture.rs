@@ -59,17 +59,31 @@ fn now_ms() -> u64 {
 /// Try to start the capture listener on the default port. Returns `None` if
 /// the port is already in use (another CPOS instance is running).
 pub fn start(tx: Sender<CaptureMsg>) -> Option<CaptureServer> {
-    let addr = format!("127.0.0.1:{DEFAULT_PORT}");
+    start_on_port(tx, DEFAULT_PORT)
+}
+
+/// Start the capture listener on a specific port. Pass `0` for an OS-assigned
+/// ephemeral port (used in tests so they never collide with a running instance
+/// or with each other). Returns `None` if the port can't be bound. The returned
+/// `CaptureServer.port` is the actual bound port.
+pub fn start_on_port(tx: Sender<CaptureMsg>, port: u16) -> Option<CaptureServer> {
+    let addr = format!("127.0.0.1:{port}");
     let server = match Server::http(&addr) {
         Ok(s) => s,
         Err(_) => return None,
     };
 
+    let bound_port = server
+        .server_addr()
+        .to_ip()
+        .map(|a| a.port())
+        .unwrap_or(port);
+
     let pending = Arc::new(Mutex::new(None));
     let pending_for_thread = pending.clone();
     std::thread::spawn(move || run(server, tx, pending_for_thread));
     Some(CaptureServer {
-        port: DEFAULT_PORT,
+        port: bound_port,
         pending,
     })
 }
@@ -81,9 +95,10 @@ mod tests {
     #[test]
     fn capture_server_starts_and_responds_to_health() {
         let (tx, _rx) = std::sync::mpsc::channel();
-        let server = start(tx);
-        assert!(server.is_some(), "server should start on default port");
-        let port = server.unwrap().port;
+        // Ephemeral port (0) so the test never collides with a running CPOS
+        // instance, a parallel test, or a leaked server thread from a prior test.
+        let server = start_on_port(tx, 0).expect("server should start on an ephemeral port");
+        let port = server.port;
 
         let resp = ureq_lite_get(port);
         assert!(resp.contains("\"status\":\"ok\""));
@@ -92,13 +107,11 @@ mod tests {
     #[test]
     fn capture_server_receives_problem() {
         let (tx, rx) = std::sync::mpsc::channel();
-        let addr = "127.0.0.1:27122";
-        let pending = Arc::new(Mutex::new(None));
-        let server = Server::http(addr).unwrap();
-        std::thread::spawn(move || super::run(server, tx, pending));
+        let server = start_on_port(tx, 0).expect("server should start on an ephemeral port");
+        let port = server.port;
 
         let body = r#"{"platform":"codeforces","id":"4A","name":"Watermelon","url":"https://codeforces.com/problemset/problem/4/A","tests":[{"input":"8","expected_output":"YES"}]}"#;
-        let resp = ureq_lite_post(27122, "/capture/problem", body);
+        let resp = ureq_lite_post(port, "/capture/problem", body);
         assert!(resp.contains("\"ok\":true"));
 
         let msg = rx.recv_timeout(std::time::Duration::from_secs(1)).unwrap();
