@@ -242,16 +242,18 @@ pub enum Tab {
     Contests,
     Analytics,
     Recommend,
+    Target,
     Config,
 }
 
 impl Tab {
-    pub const ALL: [Tab; 6] = [
+    pub const ALL: [Tab; 7] = [
         Tab::Dashboard,
         Tab::Problems,
         Tab::Contests,
         Tab::Analytics,
         Tab::Recommend,
+        Tab::Target,
         Tab::Config,
     ];
 
@@ -262,6 +264,7 @@ impl Tab {
             Tab::Contests => "Contests",
             Tab::Analytics => "Analytics",
             Tab::Recommend => "Recommend",
+            Tab::Target => "Target",
             Tab::Config => "Config",
         }
     }
@@ -334,6 +337,16 @@ pub struct App {
 
     pub recommendations: Vec<Recommendation>,
     pub recommend_selected: usize,
+
+    // Targeted, goal-driven plan (Target tab).
+    pub target_rating: u32,
+    /// False until the user picks a goal, so we can auto-default from their rating.
+    pub target_user_set: bool,
+    pub target_plan: Option<crate::engine::target::TargetPlan>,
+    pub target_selected: usize,
+    pub target_input_active: bool,
+    pub target_input_buf: String,
+
     pub contests: Vec<Contest>,
     pub contest_selected: usize,
 
@@ -424,6 +437,12 @@ impl App {
             cses_attempted: std::collections::HashSet::new(),
             recommendations: Vec::new(),
             recommend_selected: 0,
+            target_rating: crate::engine::target::next_milestone_above(1200),
+            target_user_set: false,
+            target_plan: None,
+            target_selected: 0,
+            target_input_active: false,
+            target_input_buf: String::new(),
             contests: Vec::new(),
             contest_selected: 0,
             status_message: "Press 'r' to sync with Codeforces and CSES".to_string(),
@@ -661,6 +680,82 @@ impl App {
         }
     }
 
+    /// (Re)build the goal-driven plan for the Target tab. Auto-picks a sensible
+    /// default goal (next rank milestone above the user's rating) until the user
+    /// chooses one explicitly.
+    pub fn compute_target_plan(&mut self) {
+        use crate::engine::target;
+        let user_rating = self.rating_history.last().map(|r| r.new_rating);
+        if !self.target_user_set {
+            let basis = user_rating.unwrap_or(1200).max(1100);
+            self.target_rating = target::next_milestone_above(basis);
+        }
+        let plan = target::analyze_target(
+            &self.submissions,
+            &self.problems,
+            user_rating,
+            self.target_rating,
+        );
+        if self.target_selected >= plan.steps.len() {
+            self.target_selected = 0;
+        }
+        self.target_plan = Some(plan);
+    }
+
+    /// Step the goal up/down through CF rank milestones and rebuild the plan.
+    pub fn target_cycle(&mut self, dir: i32) {
+        self.target_user_set = true;
+        self.target_rating = crate::engine::target::cycle_milestone(self.target_rating, dir);
+        self.target_selected = 0;
+        self.compute_target_plan();
+    }
+
+    /// Set an exact custom goal rating and rebuild the plan.
+    pub fn set_target_rating(&mut self, rating: u32) {
+        self.target_user_set = true;
+        self.target_rating = crate::engine::target::clamp_target(rating);
+        self.target_selected = 0;
+        self.compute_target_plan();
+    }
+
+    /// Commit the custom rating typed into the Target tab's input field.
+    pub fn apply_target_input(&mut self) {
+        if let Ok(rating) = self.target_input_buf.trim().parse::<u32>() {
+            self.set_target_rating(rating);
+        }
+        self.target_input_buf.clear();
+    }
+
+    pub fn target_scroll_down(&mut self) {
+        let len = self
+            .target_plan
+            .as_ref()
+            .map(|p| p.steps.len())
+            .unwrap_or(0);
+        if len > 0 {
+            self.target_selected = (self.target_selected + 1).min(len - 1);
+        }
+    }
+
+    pub fn target_scroll_up(&mut self) {
+        self.target_selected = self.target_selected.saturating_sub(1);
+    }
+
+    /// Start the selected plan step, jumping into the Problems workflow so
+    /// test/submit target it (mirrors `start_recommended`).
+    pub fn start_target_step(&mut self) -> Option<StartedProblem> {
+        let problem = self
+            .target_plan
+            .as_ref()?
+            .steps
+            .get(self.target_selected)?
+            .problem
+            .clone();
+        self.focus_problem(&problem);
+        self.active_tab = Tab::Problems;
+        self.start_problem_inner(problem)
+    }
+
     pub async fn load_from_cache(&mut self) -> anyhow::Result<()> {
         let cache = Cache::open()?;
         let mut all_problems = Vec::new();
@@ -679,6 +774,7 @@ impl App {
         self.apply_filters();
         self.compute_analytics();
         self.compute_recommendations();
+        self.compute_target_plan();
 
         let contests = cache.get_contests(Platform::Codeforces)?;
         self.set_contests(contests);

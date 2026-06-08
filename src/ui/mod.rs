@@ -6,6 +6,7 @@ pub mod problems;
 pub mod progress;
 pub mod recommend;
 pub mod setup;
+pub mod target;
 pub mod theme;
 
 use ratatui::prelude::*;
@@ -45,6 +46,7 @@ pub fn draw(frame: &mut Frame, app: &App) {
         Tab::Contests => contests::draw(frame, app, content),
         Tab::Analytics => analytics::draw(frame, app, content),
         Tab::Recommend => recommend::draw(frame, app, content),
+        Tab::Target => target::draw(frame, app, content),
         Tab::Config => config_view::draw(frame, app, content),
     }
 

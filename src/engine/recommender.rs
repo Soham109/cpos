@@ -3,6 +3,7 @@ use std::collections::{HashMap, HashSet};
 use chrono::{Duration, Utc};
 
 use crate::data::models::*;
+use crate::engine::target::topic_essential;
 use crate::engine::weakness::compute_tag_stats;
 
 pub const DEFAULT_COUNT: usize = 50;
@@ -63,6 +64,30 @@ pub fn recommend_problems(
         })
         .collect();
 
+    // Topics the user has solved at least once (any rating). The old scoring
+    // treated an *untouched* topic as if it were mastered (0 weak weight), which
+    // hides prerequisite blind spots. With history we instead flag core topics
+    // the user has never solved as coverage gaps, and nudge topics they've only
+    // practiced well below their target band. Gated on history so cold-start
+    // behavior (popular mid-tier classics) is unchanged.
+    let solved_tags: HashSet<String> = submissions
+        .iter()
+        .filter(|s| s.verdict == Verdict::Accepted)
+        .flat_map(|s| s.tags.iter().map(|t| t.to_lowercase()))
+        .chain(
+            all_problems
+                .iter()
+                .filter(|p| p.status == SolveStatus::Solved)
+                .flat_map(|p| p.tags.iter().map(|t| t.to_lowercase())),
+        )
+        .collect();
+
+    // Tag → average rating at which it's been solved, to spot below-band practice.
+    let tag_avg_rating: HashMap<String, f64> = tag_stats
+        .iter()
+        .filter_map(|t| t.avg_rating.map(|r| (t.tag.to_lowercase(), r)))
+        .collect();
+
     let mut scored: Vec<Scored> = Vec::new();
     for problem in all_problems {
         let key = problem_key(problem);
@@ -104,6 +129,34 @@ pub fn recommend_problems(
             score += 2.0;
         }
 
+        // Coverage + band-gap emphasis (history only — cold start stays popularity-led).
+        let mut coverage_gap = false;
+        if has_history {
+            // Core prerequisite topics for this level the user has never solved.
+            let coverage_hits = tags_lower
+                .iter()
+                .filter(|t| {
+                    let t = t.as_str();
+                    !solved_tags.contains(t)
+                        && topic_essential(t)
+                            .map(|e| e <= profile.target + 100)
+                            .unwrap_or(false)
+                })
+                .count();
+            if coverage_hits > 0 {
+                coverage_gap = true;
+                score += 2.6 + ((coverage_hits.min(3) as f64) - 1.0).max(0.0) * 1.1;
+            }
+            // Weak topics you've only ever cleared well below your target band.
+            for (tag, w) in &weak_hits {
+                if let Some(avg) = tag_avg_rating.get(tag.as_str()) {
+                    if *avg + 150.0 < profile.target as f64 {
+                        score += *w * 1.5;
+                    }
+                }
+            }
+        }
+
         // Unfinished problems you've already started.
         if attempted {
             score += 3.5;
@@ -115,7 +168,7 @@ pub fn recommend_problems(
             score += (3.5 - (rating as f64 - mid).abs() / 350.0).max(0.0);
         }
 
-        let reason = build_reason(&weak_hits, attempted, has_history, rating, &profile);
+        let reason = build_reason(&weak_hits, coverage_gap, attempted, has_history, rating, &profile);
 
         let primary_tag = tags_lower
             .first()
@@ -273,21 +326,29 @@ impl PracticeProfile {
 
 fn build_reason(
     weak_hits: &[(String, f64)],
+    coverage_gap: bool,
     attempted: bool,
     has_history: bool,
     rating: u32,
     profile: &PracticeProfile,
 ) -> String {
-    if !weak_hits.is_empty() {
-        let mut hits = weak_hits.to_vec();
-        hits.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-        let tags = hits
+    // Only call out topics with a real shortfall — mastered tags carry weight 0.
+    let mut meaningful: Vec<(String, f64)> = weak_hits
+        .iter()
+        .filter(|(_, w)| *w > 0.05)
+        .cloned()
+        .collect();
+    if !meaningful.is_empty() {
+        meaningful.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+        let tags = meaningful
             .iter()
             .take(2)
             .map(|(t, _)| t.as_str())
             .collect::<Vec<_>>()
             .join(", ");
         format!("Weak topic: {tags}")
+    } else if coverage_gap {
+        "New topic to cover".to_string()
     } else if attempted {
         "Unfinished — give it another go".to_string()
     } else if has_history && rating >= profile.preferred_min {
@@ -556,5 +617,27 @@ mod tests {
         }];
         let recs = recommend_problems(&subs, &problems, Some(1000), 5);
         assert!(recs.is_empty());
+    }
+
+    #[test]
+    fn untouched_core_topic_is_surfaced_for_coverage() {
+        // History solving dp, but graphs is a never-touched core prerequisite for
+        // the target band. With two equally-rated in-band candidates, the uncovered
+        // core topic should rank ahead of the already-known one.
+        let problems = vec![
+            prob("dp-known", 1700, &["dp"]),
+            prob("graphs-new", 1700, &["graphs"]),
+        ];
+        let subs = vec![
+            sub("dpx0", Verdict::Accepted, 1400, &["dp"]),
+            sub("dpx1", Verdict::Accepted, 1400, &["dp"]),
+            sub("dpx2", Verdict::Accepted, 1400, &["dp"]),
+        ];
+        let recs = recommend_problems(&subs, &problems, Some(1500), 2);
+        assert_eq!(recs.len(), 2);
+        assert_eq!(
+            recs[0].problem.id, "graphs-new",
+            "uncovered core topic should be surfaced first"
+        );
     }
 }

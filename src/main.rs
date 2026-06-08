@@ -214,6 +214,11 @@ async fn run_app(
                         continue;
                     }
 
+                    if app.target_input_active {
+                        handle_target_text_input(app, key.code);
+                        continue;
+                    }
+
                     if app.url_input_active {
                         handle_url_input(app, key.code);
                         continue;
@@ -537,6 +542,7 @@ fn drain_captures(app: &mut App) {
                         .sort_by(|a, b| b.submitted_at.cmp(&a.submitted_at));
                     app.compute_analytics();
                     app.compute_recommendations();
+                    app.compute_target_plan();
                 }
                 app.cses_solved = progress.solved.into_iter().collect();
                 app.cses_attempted = progress.attempted.into_iter().collect();
@@ -881,6 +887,7 @@ fn handle_input(app: &mut App, key: KeyCode) {
         Tab::Problems => handle_problems_input(app, key),
         Tab::Config => handle_config_input(app, key),
         Tab::Recommend => handle_recommend_input(app, key),
+        Tab::Target => handle_target_input(app, key),
         Tab::Contests => handle_contests_input(app, key),
         Tab::Dashboard | Tab::Analytics => {}
     }
@@ -920,6 +927,46 @@ fn handle_recommend_input(app: &mut App, key: KeyCode) {
                 launch_started(app, sp);
             }
         }
+        _ => {}
+    }
+}
+
+fn handle_target_input(app: &mut App, key: KeyCode) {
+    match key {
+        KeyCode::Char('j') | KeyCode::Down => app.target_scroll_down(),
+        KeyCode::Char('k') | KeyCode::Up => app.target_scroll_up(),
+        // Step the goal through CF rank milestones.
+        KeyCode::Char('[') | KeyCode::Char('h') | KeyCode::Left => app.target_cycle(-1),
+        KeyCode::Char(']') | KeyCode::Char('l') | KeyCode::Right => app.target_cycle(1),
+        // Type an exact custom goal.
+        KeyCode::Char('t') => {
+            app.target_input_active = true;
+            app.target_input_buf.clear();
+        }
+        KeyCode::Enter | KeyCode::Char('o') => {
+            if let Some(sp) = app.start_target_step() {
+                launch_started(app, sp);
+            }
+        }
+        _ => {}
+    }
+}
+
+/// Custom-goal entry field on the Target tab.
+fn handle_target_text_input(app: &mut App, key: KeyCode) {
+    match key {
+        KeyCode::Esc => {
+            app.target_input_active = false;
+            app.target_input_buf.clear();
+        }
+        KeyCode::Enter => {
+            app.target_input_active = false;
+            app.apply_target_input();
+        }
+        KeyCode::Backspace => {
+            app.target_input_buf.pop();
+        }
+        KeyCode::Char(c) if c.is_ascii_digit() => app.target_input_buf.push(c),
         _ => {}
     }
 }
