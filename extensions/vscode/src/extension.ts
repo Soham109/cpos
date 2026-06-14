@@ -1499,6 +1499,7 @@ type PanelState = {
   theme?: string;
   solution?: SolutionState;
   solutionBlocked: boolean;
+  submissions?: SubmissionState;
 };
 
 async function currentState(): Promise<PanelState> {
@@ -1507,6 +1508,7 @@ async function currentState(): Promise<PanelState> {
   const tests = source ? await loadSamples(source) : [];
   const results = source ? runResults.get(source) ?? [] : [];
   const solution = meta && solutionData?.problemId === meta.id ? solutionData : undefined;
+  const submissions = meta && submissionData?.problemId === meta.id ? submissionData : undefined;
   return {
     source,
     fileName: source ? path.basename(source) : "No active file",
@@ -1518,7 +1520,8 @@ async function currentState(): Promise<PanelState> {
     running: runningFor === source && source !== undefined,
     theme: extContext?.globalState.get<string>(PANEL_THEME_KEY),
     solution,
-    solutionBlocked: isSolutionBlocked(meta)
+    solutionBlocked: isSolutionBlocked(meta),
+    submissions
   };
 }
 
@@ -1803,6 +1806,9 @@ class CposActionsProvider implements vscode.WebviewViewProvider {
         break;
       case "fetchSolution":
         void fetchAndCacheSolution();
+        break;
+      case "fetchSubmissions":
+        void fetchAndCacheSubmissions();
         break;
       case "openUrl": {
         const url = (message as { url?: string }).url;
