@@ -109,6 +109,7 @@ const PANEL_THEME_KEY = "cpos.panelTheme";
 const runResults = new Map<string, RunResult[]>();
 let runningFor: string | undefined;
 let solutionData: SolutionState | undefined;
+let submissionData: SubmissionState | undefined;
 
 // Anti-cheat: never surface editorials/solutions for a problem whose Codeforces
 // contest is still running. We cache CF's contest.list (phase per contest) and
@@ -916,6 +917,47 @@ function hashPath(p: string): string {
 
 function samplePathFor(solutionPath: string): string {
   return path.join(dataDir(), "samples", `${hashPath(solutionPath)}.json`);
+}
+
+// Submissions are stored per problem id so they survive across files, panel
+// reloads, and VS Code restarts. Each problem gets its own JSON file under the
+// data dir keyed by a hash of the problem id.
+function submissionsPathFor(problemId: string): string {
+  return path.join(dataDir(), "submissions", `${hashPath(problemId)}.json`);
+}
+
+async function loadSubmissions(problemId: string): Promise<Submission[]> {
+  try {
+    const raw = await fs.readFile(submissionsPathFor(problemId), "utf8");
+    const parsed = JSON.parse(raw) as Submission[];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+async function saveSubmissions(problemId: string, submissions: Submission[]): Promise<void> {
+  await fs.mkdir(path.join(dataDir(), "submissions"), { recursive: true });
+  await fs.writeFile(
+    submissionsPathFor(problemId),
+    JSON.stringify(submissions, null, 2),
+    "utf8"
+  );
+}
+
+// Merge new submissions into the stored list, de-duplicating by id (a later
+// entry for the same id wins so verdicts can be upgraded from PENDING), then
+// keep them newest-first.
+async function recordSubmission(problemId: string, incoming: Submission): Promise<Submission[]> {
+  const existing = await loadSubmissions(problemId);
+  const byId = new Map<string, Submission>();
+  for (const s of existing) byId.set(s.id, s);
+  byId.set(incoming.id, incoming);
+  const merged = Array.from(byId.values()).sort(
+    (a, b) => Date.parse(b.submittedAt) - Date.parse(a.submittedAt)
+  );
+  await saveSubmissions(problemId, merged);
+  return merged;
 }
 
 async function saveProblemMeta(meta: ProblemMeta): Promise<void> {
