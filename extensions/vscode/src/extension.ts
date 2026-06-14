@@ -43,6 +43,43 @@ type ProblemMeta = Omit<CapturedProblem, "tests"> & {
 
 type Verdict = "AC" | "WA" | "TLE" | "RE" | "CE";
 
+// Verdicts that can come back from an online judge for a real submission. This
+// is a superset of the local-run Verdict (which only knows the sample-test
+// outcomes): an actual judge can also report memory/idleness limits, partial
+// scores, queued/judging states, etc.
+type SubmissionVerdict =
+  | "AC"      // Accepted
+  | "WA"      // Wrong answer
+  | "TLE"     // Time limit exceeded
+  | "MLE"     // Memory limit exceeded
+  | "ILE"     // Idleness limit exceeded
+  | "RE"      // Runtime error
+  | "CE"      // Compilation error
+  | "PARTIAL" // Partial score (e.g. CSES / scored problems)
+  | "REJECTED"
+  | "PENDING" // Queued or still being judged
+  | "UNKNOWN";
+
+// A single submission to an online judge, shown in the Submissions tab.
+type Submission = {
+  // Stable submission id from the judge when known, otherwise a locally
+  // generated id so freshly-queued submissions still render before a verdict.
+  id: string;
+  problemId: string;
+  // ISO timestamp of when the submission was made.
+  submittedAt: string;
+  verdict: SubmissionVerdict;
+  language?: string;
+  // Optional extra detail (e.g. "test 14", "score 70") shown next to verdict.
+  detail?: string;
+};
+
+type SubmissionState = {
+  problemId: string;
+  status: "loading" | "done" | "error";
+  submissions: Submission[];
+};
+
 type RunResult = {
   index: number;
   verdict: Verdict;
