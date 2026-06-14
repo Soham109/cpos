@@ -2311,6 +2311,11 @@ class CposActionsProvider implements vscode.WebviewViewProvider {
   .verdict.TLE, .verdict.RE { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 50%, var(--border)); }
   .verdict.run { color: var(--accent); border-color: var(--accent-dim); }
   .verdict.none { display: none; }
+  /* Submission verdicts (superset of the local-run verdicts above). */
+  .verdict.MLE, .verdict.ILE, .verdict.PARTIAL { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 50%, var(--border)); }
+  .verdict.REJECTED { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 50%, var(--border)); }
+  .verdict.PENDING { color: var(--accent); border-color: var(--accent-dim); }
+  .verdict.UNKNOWN { color: var(--dim); border-color: var(--border); }
   .test-body { padding: 8px; display: flex; flex-direction: column; gap: 7px; min-height: 0; }
   .io-grid {
     display: grid;
@@ -2612,6 +2617,44 @@ class CposActionsProvider implements vscode.WebviewViewProvider {
     border-radius: var(--radius);
     overflow: hidden;
     margin-bottom: 8px;
+  }
+  .sub-head-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin: 2px 0 10px;
+  }
+  .sub-head {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--fg);
+    letter-spacing: 0.04em;
+  }
+  .sub-refresh { flex: 0 0 auto; }
+  .sub-list { display: flex; flex-direction: column; gap: 8px; }
+  .sub-card {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: color-mix(in srgb, var(--panel) 88%, transparent);
+    padding: 9px 11px;
+  }
+  .sub-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .sub-id { font-size: 12px; font-weight: 700; color: var(--fg); }
+  .sub-meta {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+    margin-top: 6px; font-size: 10px; color: var(--dim);
+  }
+  .sub-time { color: var(--dim); }
+  .sub-lang { color: var(--fg); opacity: 0.8; }
+  .sub-detail { color: var(--warn); }
+  .sub-empty { font-size: 11px; color: var(--dim); line-height: 1.5; }
+  .sub-empty code {
+    font-family: var(--mono);
+    background: var(--highlight);
+    padding: 1px 4px;
+    border-radius: 3px;
+    color: var(--fg);
   }
   .acc-header {
     width: 100%;
