@@ -1555,6 +1555,112 @@ async function fetchAndCacheSolution(): Promise<void> {
   refreshActions();
 }
 
+// Map a Codeforces API verdict string to our compact SubmissionVerdict.
+function mapCfVerdict(verdict: string | undefined): SubmissionVerdict {
+  switch (verdict) {
+    case "OK": return "AC";
+    case "WRONG_ANSWER": return "WA";
+    case "TIME_LIMIT_EXCEEDED": return "TLE";
+    case "MEMORY_LIMIT_EXCEEDED": return "MLE";
+    case "IDLENESS_LIMIT_EXCEEDED": return "ILE";
+    case "RUNTIME_ERROR": return "RE";
+    case "COMPILATION_ERROR": return "CE";
+    case "PARTIAL": return "PARTIAL";
+    case "REJECTED":
+    case "CHALLENGED": return "REJECTED";
+    case "TESTING":
+    case "SUBMITTED":
+    case undefined:
+    case "":
+      return "PENDING";
+    default: return "UNKNOWN";
+  }
+}
+
+type CfSubmission = {
+  id: number;
+  creationTimeSeconds: number;
+  programmingLanguage?: string;
+  verdict?: string;
+  passedTestCount?: number;
+  problem?: { contestId?: number; index?: string };
+};
+
+// Pull the user's recent submissions for this problem from the public
+// Codeforces API and merge real verdicts into the stored submission list.
+// Requires a configured handle; only Codeforces problems are supported.
+async function fetchCodeforcesSubmissions(meta: ProblemMeta): Promise<Submission[] | undefined> {
+  const platform = meta.platform.toLowerCase();
+  if (platform !== "codeforces" && platform !== "cf") return undefined;
+  const handle = config().get<string>("codeforcesHandle", "").trim();
+  if (!handle) return undefined;
+  const cf = parseCodeforcesId(meta.id);
+  if (!cf.contest) return undefined;
+
+  // Pull a large window so we surface every submission to this problem, not
+  // just the most recent handful across all problems.
+  const url = `https://codeforces.com/api/user.status?handle=${encodeURIComponent(handle)}&from=1&count=10000`;
+  try {
+    const resp = await fetch(url);
+    if (!resp.ok) return undefined;
+    const json = (await resp.json()) as { status?: string; result?: CfSubmission[] };
+    if (json.status !== "OK" || !Array.isArray(json.result)) return undefined;
+    return json.result
+      .filter((s) =>
+        String(s.problem?.contestId ?? "") === cf.contest &&
+        (!cf.index || (s.problem?.index ?? "").toUpperCase() === cf.index))
+      .map((s) => {
+        const verdict = mapCfVerdict(s.verdict);
+        const detail = verdict !== "AC" && typeof s.passedTestCount === "number"
+          ? `passed ${s.passedTestCount}`
+          : undefined;
+        return {
+          id: String(s.id),
+          problemId: meta.id,
+          submittedAt: new Date(s.creationTimeSeconds * 1000).toISOString(),
+          verdict,
+          language: s.programmingLanguage,
+          detail
+        } as Submission;
+      });
+  } catch {
+    return undefined;
+  }
+}
+
+// Refresh the Submissions tab: start from locally-recorded submissions, then
+// fold in real verdicts fetched from the judge (when a handle is configured).
+async function fetchAndCacheSubmissions(): Promise<void> {
+  const source = await activeSolutionPath();
+  const meta = source ? await loadProblemMetaForFile(source) : await loadProblemMeta();
+  if (!meta) return;
+
+  submissionData = {
+    problemId: meta.id,
+    status: "loading",
+    submissions: await loadSubmissions(meta.id)
+  };
+  refreshActions();
+
+  const fetched = await fetchCodeforcesSubmissions(meta);
+  let merged: Submission[];
+  if (fetched && fetched.length > 0) {
+    // The judge is authoritative once it reports submissions: take its full
+    // history (real verdicts) and drop our local "pending" placeholders so a
+    // submission never stays stuck on Pending or shows up twice.
+    merged = fetched
+      .slice()
+      .sort((a, b) => Date.parse(b.submittedAt) - Date.parse(a.submittedAt));
+    await saveSubmissions(meta.id, merged);
+  } else {
+    // No handle configured, judge unreachable, or nothing fetched yet: fall
+    // back to whatever we recorded locally.
+    merged = await loadSubmissions(meta.id);
+  }
+  submissionData = { problemId: meta.id, status: "done", submissions: merged };
+  refreshActions();
+}
+
 async function fetchYouTubeVideos(query: string): Promise<SolutionVideo[]> {
   const url = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}&sp=EgIQAQ%3D%3D`;
   try {
