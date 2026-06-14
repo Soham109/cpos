@@ -162,6 +162,11 @@
           "type": "object",
           "default": {},
           "description": "Language overrides. Each key maps to { compile, run, extension } with {source}, {output}, and {dir} placeholders. If unset, inherits compile commands from your CPOS app config."
+        },
+        "cpos.codeforcesHandle": {
+          "type": "string",
+          "default": "",
+          "description": "Your Codeforces handle. Used to fetch real submission verdicts (Accepted, TLE, MLE, …) for the Submissions tab. Leave empty to only track submissions made from CPOS."
         }
       }
     },
