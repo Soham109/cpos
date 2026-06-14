@@ -3443,6 +3443,72 @@ class CposActionsProvider implements vscode.WebviewViewProvider {
       + '</div>';
   }
 
+  // Human label shown inside the verdict badge for each submission.
+  function verdictLabel(v) {
+    switch (v) {
+      case 'AC': return 'Accepted';
+      case 'WA': return 'Wrong Answer';
+      case 'TLE': return 'Time Limit';
+      case 'MLE': return 'Memory Limit';
+      case 'ILE': return 'Idleness Limit';
+      case 'RE': return 'Runtime Error';
+      case 'CE': return 'Compile Error';
+      case 'PARTIAL': return 'Partial';
+      case 'REJECTED': return 'Rejected';
+      case 'PENDING': return 'Pending';
+      default: return 'Unknown';
+    }
+  }
+
+  function formatSubmissionTime(iso) {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    return d.toLocaleString(undefined, {
+      month: 'short', day: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    });
+  }
+
+  function submissionsSection() {
+    const sub = state.submissions;
+    const status = sub ? sub.status : 'loading';
+    const list = (sub && sub.submissions) ? sub.submissions : [];
+
+    let body;
+    if (status === 'loading' && list.length === 0) {
+      body = '<div class="sol-spinner">&#9680; Loading submissions…</div>';
+    } else if (list.length === 0) {
+      body = '<div class="sub-empty">No submissions yet. Submit from CPOS, or set '
+        + '<code>cpos.codeforcesHandle</code> to pull your judge verdicts.</div>';
+    } else {
+      // Newest first; show every submission to this problem. The list scrolls
+      // inside the wrapper when it grows long.
+      const rows = list.map(function(s, i) {
+        const num = list.length - i;
+        const v = s.verdict || 'UNKNOWN';
+        const detail = s.detail ? '<span class="sub-detail">' + esc(s.detail) + '</span>' : '';
+        const lang = s.language ? '<span class="sub-lang">' + esc(s.language) + '</span>' : '';
+        return '<div class="sub-card">'
+          + '<div class="sub-row">'
+          + '<span class="sub-id">#' + num + '</span>'
+          + '<span class="verdict ' + esc(v) + '">' + esc(verdictLabel(v)) + '</span>'
+          + '</div>'
+          + '<div class="sub-meta">'
+          + '<span class="sub-time">' + esc(formatSubmissionTime(s.submittedAt)) + '</span>'
+          + lang + detail
+          + '</div>'
+          + '</div>';
+      }).join('');
+      body = '<div class="sub-list">' + rows + '</div>';
+    }
+    return '<div class="sol-wrapper">'
+      + '<div class="sub-head-row">'
+      + '<span class="sub-head">Submissions</span>'
+      + '<button class="ghost sub-refresh" data-act="fetchSubmissions" title="Refresh verdicts">&#8635; refresh</button>'
+      + '</div>'
+      + body + '</div>';
+  }
+
   function render() {
     const app = document.getElementById("app");
     let body = "";
