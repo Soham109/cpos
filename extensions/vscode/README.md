@@ -34,9 +34,10 @@ Part of the **CPOS** project — works with the [terminal app](https://github.co
 
 Open the **CPOS** view in the activity bar:
 
-- **Tests / Statement tabs** — switch between the sample tests and the captured problem statement (rendered natively with MathJax) without leaving the editor
+- **Tests / Statement / Submissions / Solution tabs** — switch between the sample tests, the captured problem statement (rendered natively with MathJax), your recent submissions, and editorial/solution resources without leaving the editor
 - **Run All** — compile and run every sample; verdicts shown inline (`AC`, `WA`, `TLE`, `RE`, `CE`)
 - **Submit** — queue submission for the browser companion; if it is not picked up quickly, CPOS offers an **Open submit page** fallback
+- **Submissions tab** — every submission you have made to the problem (scrollable, newest first), each showing a submission number, the time it was made, and the judge verdict (`Accepted`, `Wrong Answer`, `Time Limit`, `Memory Limit`, …). Set `cpos.codeforcesHandle` to pull your full history with real verdicts from the Codeforces API; without it, submissions made from CPOS are tracked locally as `Pending`. Use the **refresh** button to re-pull verdicts
 - **Problem ID link** — open the problem statement from the Tests header
 - **GitHub** — open the CPOS repository
 - **Test cases** — edit, add, or remove samples; Codeforces multi-case inputs can show linked input/output blocks
@@ -46,7 +47,7 @@ Keep the **terminal app** running for browsing, recommendations, and analytics. 
 
 ## Settings
 
-`Settings → Extensions → CPOS` — save folder, language, template, compile commands, timeouts.
+`Settings → Extensions → CPOS` — save folder, language, template, compile commands, timeouts, Codeforces handle.
 
 By default, files are created in the **currently open workspace folder**.
 
