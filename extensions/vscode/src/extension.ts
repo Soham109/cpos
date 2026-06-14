@@ -2447,8 +2447,9 @@ class CposActionsProvider implements vscode.WebviewViewProvider {
     line-height: 1.6;
     border-style: dashed;
   }
-  .tabs { flex: 0 0 auto; display: flex; gap: 4px; margin-bottom: 10px; border-bottom: 1px solid var(--border-soft); }
-  .tab { padding: 6px 12px; border: none; background: transparent; color: var(--dim); cursor: pointer; border-bottom: 2px solid transparent; font-size: 11px; font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.05em; }
+  .tabs { flex: 0 0 auto; display: flex; gap: 4px; margin-bottom: 10px; border-bottom: 1px solid var(--border-soft); overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; }
+  .tabs::-webkit-scrollbar { height: 4px; }
+  .tab { flex: 0 0 auto; white-space: nowrap; padding: 6px 12px; border: none; background: transparent; color: var(--dim); cursor: pointer; border-bottom: 2px solid transparent; font-size: 11px; font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.05em; }
   .tab.active { color: var(--fg); border-bottom-color: var(--accent); font-weight: 700; }
   .tab:hover:not(.active) { color: var(--fg); }
   .statement-view {
@@ -3313,6 +3314,7 @@ class CposActionsProvider implements vscode.WebviewViewProvider {
     if (!state.meta) return '';
     const tabs = [{ id: 'tests', label: 'Tests' }];
     if (state.meta.statementHtml) tabs.push({ id: 'statement', label: 'Statement' });
+    tabs.push({ id: 'submissions', label: 'Submissions' });
     // Solution tab is hidden while the problem's contest is still running.
     if (!state.solutionBlocked) tabs.push({ id: 'solution', label: 'Solution' });
     return '<div class="tabs" role="tablist">'
@@ -3561,6 +3563,8 @@ class CposActionsProvider implements vscode.WebviewViewProvider {
     try {
       if (activeTab === "statement" && state.meta && state.meta.statementHtml) {
         body = statementSection();
+      } else if (activeTab === "submissions" && state.meta) {
+        body = submissionsSection();
       } else if (activeTab === "solution" && state.meta && !state.solutionBlocked) {
         body = solutionSection();
       } else {
@@ -3597,6 +3601,11 @@ class CposActionsProvider implements vscode.WebviewViewProvider {
   // Update verdicts/results without wiping in-progress textarea edits (same file).
   function patch() {
     const app = document.getElementById("app");
+    // patch() only knows how to update the Tests view in place (to preserve
+    // in-progress textarea edits). For Statement/Submissions/Solution a state
+    // update must do a full render, otherwise their content goes stale (e.g.
+    // submission verdicts never refresh after a fetch).
+    if (activeTab !== "tests") { render(); return; }
     const cards = app.querySelectorAll(".test");
     // If the test count changed (add/delete/new capture), do a full render.
     if (cards.length !== state.tests.length) { render(); return; }
@@ -3677,6 +3686,7 @@ class CposActionsProvider implements vscode.WebviewViewProvider {
           activeTab = el.getAttribute("data-tab") || "tests";
           persistUiState();
           if (activeTab === "solution") send("fetchSolution");
+          if (activeTab === "submissions") send("fetchSubmissions");
           render();
           return;
         }
