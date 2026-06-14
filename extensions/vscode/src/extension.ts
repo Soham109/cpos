@@ -1224,7 +1224,26 @@ async function submitActiveFile(): Promise<void> {
   };
 
   await vscode.env.clipboard.writeText(code);
+  await recordQueuedSubmission(meta.id, lang);
   void showSubmitQueuedStatus(meta.id, submitUrl, pendingSubmit);
+}
+
+// Log a locally-known submission the moment the user submits, before any
+// verdict is available, so the Submissions tab reflects the attempt right away.
+// The verdict starts as PENDING and is upgraded later when the judge reports
+// back (see fetchAndCacheSubmissions).
+async function recordQueuedSubmission(problemId: string, language: string): Promise<void> {
+  const now = new Date();
+  const submission: Submission = {
+    id: `local-${now.getTime()}`,
+    problemId,
+    submittedAt: now.toISOString(),
+    verdict: "PENDING",
+    language
+  };
+  const merged = await recordSubmission(problemId, submission);
+  submissionData = { problemId, status: "done", submissions: merged };
+  refreshActions();
 }
 
 async function showSubmitQueuedStatus(problemId: string, submitUrl: string, queued: PendingSubmit): Promise<void> {
