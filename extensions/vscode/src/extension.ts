@@ -1724,6 +1724,9 @@ function startSubmissionPolling(meta: ProblemMeta): void {
     }
     if (!hasPendingSubmission(merged) || submissionPollAttempts >= MAX_SUBMISSION_POLLS) {
       stopSubmissionPolling();
+      // Re-render once more so the "checking…" indicator clears now that the
+      // poll loop has stopped.
+      refreshActions();
       return;
     }
     submissionPollTimer = setTimeout(() => { void tick(); }, SUBMISSION_POLL_INTERVAL_MS);
