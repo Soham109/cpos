@@ -1230,7 +1230,7 @@ async function submitActiveFile(): Promise<void> {
   };
 
   await vscode.env.clipboard.writeText(code);
-  await recordQueuedSubmission(meta.id, lang);
+  await recordQueuedSubmission(meta, lang);
   void showSubmitQueuedStatus(meta.id, submitUrl, pendingSubmit);
 }
 
@@ -1238,18 +1238,21 @@ async function submitActiveFile(): Promise<void> {
 // verdict is available, so the Submissions tab reflects the attempt right away.
 // The verdict starts as PENDING and is upgraded later when the judge reports
 // back (see fetchAndCacheSubmissions).
-async function recordQueuedSubmission(problemId: string, language: string): Promise<void> {
+async function recordQueuedSubmission(meta: ProblemMeta, language: string): Promise<void> {
   const now = new Date();
   const submission: Submission = {
     id: `local-${now.getTime()}`,
-    problemId,
+    problemId: meta.id,
     submittedAt: now.toISOString(),
     verdict: "PENDING",
     language
   };
-  const merged = await recordSubmission(problemId, submission);
-  submissionData = { problemId, status: "done", submissions: merged };
+  const merged = await recordSubmission(meta.id, submission);
+  submissionData = { problemId: meta.id, status: "done", submissions: merged };
   refreshActions();
+  // Begin polling the judge for the real verdict so the Submissions tab
+  // updates on its own without the user having to refresh.
+  startSubmissionPolling(meta);
 }
 
 async function showSubmitQueuedStatus(problemId: string, submitUrl: string, queued: PendingSubmit): Promise<void> {
