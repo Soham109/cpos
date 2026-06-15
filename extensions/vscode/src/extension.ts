@@ -43,34 +43,19 @@ type ProblemMeta = Omit<CapturedProblem, "tests"> & {
 
 type Verdict = "AC" | "WA" | "TLE" | "RE" | "CE";
 
-// Verdicts that can come back from an online judge for a real submission. This
-// is a superset of the local-run Verdict (which only knows the sample-test
-// outcomes): an actual judge can also report memory/idleness limits, partial
-// scores, queued/judging states, etc.
+// Superset of the local-run Verdict: a real judge also reports memory/idleness
+// limits, partial scores, and queued/judging states.
 type SubmissionVerdict =
-  | "AC"      // Accepted
-  | "WA"      // Wrong answer
-  | "TLE"     // Time limit exceeded
-  | "MLE"     // Memory limit exceeded
-  | "ILE"     // Idleness limit exceeded
-  | "RE"      // Runtime error
-  | "CE"      // Compilation error
-  | "PARTIAL" // Partial score (e.g. CSES / scored problems)
-  | "REJECTED"
-  | "PENDING" // Queued or still being judged
-  | "UNKNOWN";
+  | "AC" | "WA" | "TLE" | "MLE" | "ILE" | "RE" | "CE"
+  | "PARTIAL" | "REJECTED" | "PENDING" | "UNKNOWN";
 
-// A single submission to an online judge, shown in the Submissions tab.
 type Submission = {
-  // Stable submission id from the judge when known, otherwise a locally
-  // generated id so freshly-queued submissions still render before a verdict.
+  // Judge submission id when known, else a local id so queued submissions render.
   id: string;
   problemId: string;
-  // ISO timestamp of when the submission was made.
   submittedAt: string;
   verdict: SubmissionVerdict;
   language?: string;
-  // Optional extra detail (e.g. "test 14", "score 70") shown next to verdict.
   detail?: string;
 };
 
@@ -79,8 +64,8 @@ type SubmissionState = {
   status: "loading" | "done" | "error";
   submissions: Submission[];
   message?: string;
-  // True while a verdict-polling loop is actively pinging the judge, so the UI
-  // can show an honest "checking…" indicator only when we really are checking.
+  // True while a poll loop is pinging the judge, so the UI only shows the
+  // "checking…" indicator when we really are checking.
   polling?: boolean;
 };
 
@@ -1735,8 +1720,7 @@ function mergeFetchedSubmissions(local: Submission[], fetched: Submission[]): Su
   );
 }
 
-// Refresh the Submissions tab: start from locally-recorded submissions, then
-// fold in real verdicts fetched from the judge (when a handle is configured).
+// Refresh the Submissions tab, then poll until pending verdicts resolve.
 async function fetchAndCacheSubmissions(): Promise<void> {
   const source = await activeSolutionPath();
   const meta = source ? await loadProblemMetaForFile(source) : await loadProblemMeta();
@@ -1780,10 +1764,8 @@ async function refreshSubmissionsOnce(meta: ProblemMeta): Promise<Submission[]> 
   let merged: Submission[];
   let message: string | undefined;
   if (fetched) {
-    // The judge is authoritative for submissions it has reported, but keep a
-    // local Pending placeholder if Codeforces is still returning only older
-    // attempts for this problem. Otherwise polling would stop before the new
-    // verdict appears.
+    // Trust the judge's verdicts, but keep a local Pending placeholder when CF
+    // still lists only older attempts, so polling doesn't stop too early.
     merged = mergeFetchedSubmissions(local, fetched);
     await saveSubmissions(meta.id, merged);
     if (hasPendingSubmission(merged)) {
