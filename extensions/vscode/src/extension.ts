@@ -78,6 +78,9 @@ type SubmissionState = {
   problemId: string;
   status: "loading" | "done" | "error";
   submissions: Submission[];
+  // True while a verdict-polling loop is actively pinging the judge, so the UI
+  // can show an honest "checking…" indicator only when we really are checking.
+  polling?: boolean;
 };
 
 type RunResult = {
@@ -1517,7 +1520,9 @@ async function currentState(): Promise<PanelState> {
   const tests = source ? await loadSamples(source) : [];
   const results = source ? runResults.get(source) ?? [] : [];
   const solution = meta && solutionData?.problemId === meta.id ? solutionData : undefined;
-  const submissions = meta && submissionData?.problemId === meta.id ? submissionData : undefined;
+  const submissions = meta && submissionData?.problemId === meta.id
+    ? { ...submissionData, polling: submissionPollTimer !== undefined }
+    : undefined;
   return {
     source,
     fileName: source ? path.basename(source) : "No active file",
@@ -3617,15 +3622,14 @@ class CposActionsProvider implements vscode.WebviewViewProvider {
       body = '<div class="sub-list">' + rows + '</div>';
     }
 
-    // While a submission is still being judged (or a refresh is in flight),
-    // show a live "checking" banner so it is obvious CPOS is polling for the
-    // verdict rather than stuck.
-    const hasPending = list.some(function(s) { return (s.verdict || '') === 'PENDING'; });
-    const checking = (hasPending || status === 'loading') && list.length > 0
+    // While CPOS is actively polling the judge (or a refresh is in flight),
+    // show a live "checking" banner so it is obvious we are working on the
+    // verdict rather than stuck. Only shown when we genuinely are checking
+    // (i.e. a Codeforces handle is set and a poll loop is running).
+    const busy = (sub && sub.polling) || status === 'loading';
+    const checking = busy && list.length > 0
       ? '<div class="sub-checking">&#9680; Checking the judge for verdicts…</div>'
       : '';
-
-    const busy = (hasPending || status === 'loading');
     const refreshBtn = '<button class="ghost sub-refresh' + (busy ? ' busy' : '')
       + '" data-act="fetchSubmissions" title="Refresh verdicts">&#8635; '
       + (busy ? 'checking…' : 'refresh') + '</button>';
