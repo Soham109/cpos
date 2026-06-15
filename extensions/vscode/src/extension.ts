@@ -110,6 +110,12 @@ const runResults = new Map<string, RunResult[]>();
 let runningFor: string | undefined;
 let solutionData: SolutionState | undefined;
 let submissionData: SubmissionState | undefined;
+// Active verdict-polling loop for the Submissions tab (Codeforces only). We
+// keep pinging the judge until the newest submission stops being "Pending".
+let submissionPollTimer: ReturnType<typeof setTimeout> | undefined;
+let submissionPollAttempts = 0;
+const SUBMISSION_POLL_INTERVAL_MS = 3500; // stay within CF API rate limits
+const MAX_SUBMISSION_POLLS = 40;          // ~2.3 min before we give up
 
 // Anti-cheat: never surface editorials/solutions for a problem whose Codeforces
 // contest is still running. We cache CF's contest.list (phase per contest) and
@@ -1645,6 +1651,20 @@ async function fetchAndCacheSubmissions(): Promise<void> {
   };
   refreshActions();
 
+  const merged = await refreshSubmissionsOnce(meta);
+  // If anything is still being judged, keep polling the judge until it
+  // resolves instead of leaving the user stuck on "Pending".
+  if (hasPendingSubmission(merged)) {
+    startSubmissionPolling(meta);
+  } else {
+    stopSubmissionPolling();
+  }
+}
+
+// One refresh pass: pull the latest verdicts from the judge (when possible),
+// persist them, and push the result to the panel. Returns the merged list so
+// callers (and the poll loop) can decide whether to keep going.
+async function refreshSubmissionsOnce(meta: ProblemMeta): Promise<Submission[]> {
   const fetched = await fetchCodeforcesSubmissions(meta);
   let merged: Submission[];
   if (fetched && fetched.length > 0) {
@@ -1662,6 +1682,45 @@ async function fetchAndCacheSubmissions(): Promise<void> {
   }
   submissionData = { problemId: meta.id, status: "done", submissions: merged };
   refreshActions();
+  return merged;
+}
+
+function hasPendingSubmission(list: Submission[]): boolean {
+  return list.some((s) => s.verdict === "PENDING");
+}
+
+function stopSubmissionPolling(): void {
+  if (submissionPollTimer) {
+    clearTimeout(submissionPollTimer);
+    submissionPollTimer = undefined;
+  }
+  submissionPollAttempts = 0;
+}
+
+// Repeatedly re-fetch verdicts until the newest submission resolves (verdict
+// is no longer Pending) or we hit the attempt cap. Only useful for Codeforces
+// with a configured handle — there is no verdict source otherwise.
+function startSubmissionPolling(meta: ProblemMeta): void {
+  stopSubmissionPolling();
+  const platform = meta.platform.toLowerCase();
+  const handle = config().get<string>("codeforcesHandle", "").trim();
+  if ((platform !== "codeforces" && platform !== "cf") || !handle) return;
+
+  const tick = async (): Promise<void> => {
+    submissionPollAttempts++;
+    let merged: Submission[] = [];
+    try {
+      merged = await refreshSubmissionsOnce(meta);
+    } catch {
+      // Transient network/API error — keep trying until the cap.
+    }
+    if (!hasPendingSubmission(merged) || submissionPollAttempts >= MAX_SUBMISSION_POLLS) {
+      stopSubmissionPolling();
+      return;
+    }
+    submissionPollTimer = setTimeout(() => { void tick(); }, SUBMISSION_POLL_INTERVAL_MS);
+  };
+  submissionPollTimer = setTimeout(() => { void tick(); }, SUBMISSION_POLL_INTERVAL_MS);
 }
 
 async function fetchYouTubeVideos(query: string): Promise<SolutionVideo[]> {
