@@ -2695,6 +2695,14 @@ class CposActionsProvider implements vscode.WebviewViewProvider {
     letter-spacing: 0.04em;
   }
   .sub-refresh { flex: 0 0 auto; }
+  .sub-refresh.busy { color: var(--accent); border-color: var(--accent-dim); }
+  .sub-checking {
+    font-size: 10px;
+    color: var(--accent);
+    margin: 0 0 8px;
+    animation: subPulse 1.4s ease-in-out infinite;
+  }
+  @keyframes subPulse { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
   .sub-list { display: flex; flex-direction: column; gap: 8px; }
   .sub-card {
     border: 1px solid var(--border);
@@ -3608,11 +3616,26 @@ class CposActionsProvider implements vscode.WebviewViewProvider {
       }).join('');
       body = '<div class="sub-list">' + rows + '</div>';
     }
+
+    // While a submission is still being judged (or a refresh is in flight),
+    // show a live "checking" banner so it is obvious CPOS is polling for the
+    // verdict rather than stuck.
+    const hasPending = list.some(function(s) { return (s.verdict || '') === 'PENDING'; });
+    const checking = (hasPending || status === 'loading') && list.length > 0
+      ? '<div class="sub-checking">&#9680; Checking the judge for verdicts…</div>'
+      : '';
+
+    const busy = (hasPending || status === 'loading');
+    const refreshBtn = '<button class="ghost sub-refresh' + (busy ? ' busy' : '')
+      + '" data-act="fetchSubmissions" title="Refresh verdicts">&#8635; '
+      + (busy ? 'checking…' : 'refresh') + '</button>';
+
     return '<div class="sol-wrapper">'
       + '<div class="sub-head-row">'
       + '<span class="sub-head">Submissions</span>'
-      + '<button class="ghost sub-refresh" data-act="fetchSubmissions" title="Refresh verdicts">&#8635; refresh</button>'
+      + refreshBtn
       + '</div>'
+      + checking
       + body + '</div>';
   }
 
