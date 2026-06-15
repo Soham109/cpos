@@ -78,6 +78,7 @@ type SubmissionState = {
   problemId: string;
   status: "loading" | "done" | "error";
   submissions: Submission[];
+  message?: string;
   // True while a verdict-polling loop is actively pinging the judge, so the UI
   // can show an honest "checking…" indicator only when we really are checking.
   polling?: boolean;
@@ -581,6 +582,7 @@ function absolutizeCommand(command: string): string {
 type TuiConfig = {
   defaultLanguage?: string;
   templateFile?: string;
+  codeforcesHandle?: string;
   compileCommands: Record<string, Partial<CompileConfig>>;
 };
 
@@ -614,7 +616,8 @@ function tuiConfig(): TuiConfig {
 }
 
 // Minimal TOML reader for just the keys we share with the TUI: top-level
-// default_language / template_file and [compile_commands.<lang>] tables.
+// default_language / template_file, [handles], and [compile_commands.<lang>]
+// tables.
 function parseTuiConfig(text: string): TuiConfig {
   const cfg: TuiConfig = { compileCommands: {} };
   let section = "";
@@ -634,6 +637,8 @@ function parseTuiConfig(text: string): TuiConfig {
     if (section === "") {
       if (key === "default_language") cfg.defaultLanguage = value;
       else if (key === "template_file") cfg.templateFile = value;
+    } else if (section === "handles") {
+      if (key === "codeforces") cfg.codeforcesHandle = value;
     } else if (section.startsWith("compile_commands.")) {
       const lang = section.slice("compile_commands.".length);
       const entry = cfg.compileCommands[lang] ?? (cfg.compileCommands[lang] = {});
@@ -1251,11 +1256,16 @@ async function recordQueuedSubmission(meta: ProblemMeta, language: string): Prom
     language
   };
   const merged = await recordSubmission(meta.id, submission);
-  submissionData = { problemId: meta.id, status: "done", submissions: merged };
-  refreshActions();
   // Begin polling the judge for the real verdict so the Submissions tab
   // updates on its own without the user having to refresh.
+  submissionData = {
+    problemId: meta.id,
+    status: "done",
+    submissions: merged,
+    message: queuedSubmissionMessage(meta)
+  };
   startSubmissionPolling(meta);
+  refreshActions();
 }
 
 async function showSubmitQueuedStatus(problemId: string, submitUrl: string, queued: PendingSubmit): Promise<void> {
@@ -1287,6 +1297,12 @@ function parseCodeforcesId(id: string): { contest?: string; index?: string } {
   const match = id.match(/^(\d+)([A-Za-z]\d*)$/);
   if (!match) return {};
   return { contest: match[1], index: match[2].toUpperCase() };
+}
+
+function codeforcesHandle(): string {
+  const setting = config().get<string>("codeforcesHandle", "").trim();
+  if (setting) return setting;
+  return (tuiConfig().codeforcesHandle ?? "").trim();
 }
 
 // Refresh CF contest phases at most once per minute. On a successful update we
@@ -1520,9 +1536,17 @@ async function currentState(): Promise<PanelState> {
   const tests = source ? await loadSamples(source) : [];
   const results = source ? runResults.get(source) ?? [] : [];
   const solution = meta && solutionData?.problemId === meta.id ? solutionData : undefined;
-  const submissions = meta && submissionData?.problemId === meta.id
-    ? { ...submissionData, polling: submissionPollTimer !== undefined }
-    : undefined;
+  let submissions: SubmissionState | undefined;
+  if (meta) {
+    if (submissionData?.problemId === meta.id) {
+      submissions = { ...submissionData, polling: submissionPollTimer !== undefined };
+    } else {
+      const stored = await loadSubmissions(meta.id);
+      if (stored.length > 0) {
+        submissions = { problemId: meta.id, status: "done", submissions: stored };
+      }
+    }
+  }
   return {
     source,
     fileName: source ? path.basename(source) : "No active file",
@@ -1609,7 +1633,7 @@ type CfSubmission = {
 async function fetchCodeforcesSubmissions(meta: ProblemMeta): Promise<Submission[] | undefined> {
   const platform = meta.platform.toLowerCase();
   if (platform !== "codeforces" && platform !== "cf") return undefined;
-  const handle = config().get<string>("codeforcesHandle", "").trim();
+  const handle = codeforcesHandle();
   if (!handle) return undefined;
   const cf = parseCodeforcesId(meta.id);
   if (!cf.contest) return undefined;
@@ -1629,7 +1653,7 @@ async function fetchCodeforcesSubmissions(meta: ProblemMeta): Promise<Submission
       .map((s) => {
         const verdict = mapCfVerdict(s.verdict);
         const detail = verdict !== "AC" && typeof s.passedTestCount === "number"
-          ? `passed ${s.passedTestCount}`
+          ? `test ${s.passedTestCount + 1}`
           : undefined;
         return {
           id: String(s.id),
@@ -1643,6 +1667,72 @@ async function fetchCodeforcesSubmissions(meta: ProblemMeta): Promise<Submission
   } catch {
     return undefined;
   }
+}
+
+function submissionFetchUnavailableMessage(meta: ProblemMeta): string | undefined {
+  const platform = meta.platform.toLowerCase();
+  if (platform !== "codeforces" && platform !== "cf") {
+    return "Automatic verdict refresh is available for Codeforces problems only right now.";
+  }
+  if (!codeforcesHandle()) {
+    return "Set cpos.codeforcesHandle, or [handles].codeforces in your CPOS config, to fetch real verdicts.";
+  }
+  const cf = parseCodeforcesId(meta.id);
+  if (!cf.contest) {
+    return "Could not parse this Codeforces problem id for verdict lookup.";
+  }
+  return undefined;
+}
+
+function queuedSubmissionMessage(meta: ProblemMeta): string | undefined {
+  return submissionFetchUnavailableMessage(meta)
+    ?? "Waiting for Codeforces to report the verdict...";
+}
+
+function isLocalPendingSubmission(submission: Submission): boolean {
+  return submission.verdict === "PENDING" && submission.id.startsWith("local-");
+}
+
+function fetchedCoveringLocalPending(
+  local: Submission,
+  fetched: Submission[],
+  usedFetchedIds: Set<string>
+): string | undefined {
+  const localTime = Date.parse(local.submittedAt);
+  const candidates = fetched
+    .filter((submission) => !usedFetchedIds.has(submission.id))
+    .slice()
+    .sort((a, b) => Date.parse(a.submittedAt) - Date.parse(b.submittedAt));
+  if (!Number.isFinite(localTime)) return candidates[0]?.id;
+  const toleranceMs = 2_000;
+  return candidates.find((submission) => {
+    const fetchedTime = Date.parse(submission.submittedAt);
+    return Number.isFinite(fetchedTime) && fetchedTime >= localTime - toleranceMs;
+  })?.id;
+}
+
+function mergeFetchedSubmissions(local: Submission[], fetched: Submission[]): Submission[] {
+  const byId = new Map<string, Submission>();
+  for (const submission of fetched) byId.set(submission.id, submission);
+  const usedFetchedIds = new Set<string>();
+  const localSorted = local.slice().sort(
+    (a, b) => Date.parse(a.submittedAt) - Date.parse(b.submittedAt)
+  );
+  for (const submission of localSorted) {
+    if (isLocalPendingSubmission(submission)) {
+      const coveringId = fetchedCoveringLocalPending(submission, fetched, usedFetchedIds);
+      if (coveringId) {
+        usedFetchedIds.add(coveringId);
+      } else {
+        byId.set(submission.id, submission);
+      }
+    } else if (!byId.has(submission.id)) {
+      byId.set(submission.id, submission);
+    }
+  }
+  return Array.from(byId.values()).sort(
+    (a, b) => Date.parse(b.submittedAt) - Date.parse(a.submittedAt)
+  );
 }
 
 // Refresh the Submissions tab: start from locally-recorded submissions, then
@@ -1673,22 +1763,41 @@ async function fetchAndCacheSubmissions(): Promise<void> {
 // persist them, and push the result to the panel. Returns the merged list so
 // callers (and the poll loop) can decide whether to keep going.
 async function refreshSubmissionsOnce(meta: ProblemMeta): Promise<Submission[]> {
+  const unavailable = submissionFetchUnavailableMessage(meta);
+  const local = await loadSubmissions(meta.id);
+  if (unavailable) {
+    submissionData = {
+      problemId: meta.id,
+      status: "done",
+      submissions: local,
+      message: unavailable
+    };
+    refreshActions();
+    return local;
+  }
+
   const fetched = await fetchCodeforcesSubmissions(meta);
   let merged: Submission[];
-  if (fetched && fetched.length > 0) {
-    // The judge is authoritative once it reports submissions: take its full
-    // history (real verdicts) and drop our local "pending" placeholders so a
-    // submission never stays stuck on Pending or shows up twice.
-    merged = fetched
-      .slice()
-      .sort((a, b) => Date.parse(b.submittedAt) - Date.parse(a.submittedAt));
+  let message: string | undefined;
+  if (fetched) {
+    // The judge is authoritative for submissions it has reported, but keep a
+    // local Pending placeholder if Codeforces is still returning only older
+    // attempts for this problem. Otherwise polling would stop before the new
+    // verdict appears.
+    merged = mergeFetchedSubmissions(local, fetched);
     await saveSubmissions(meta.id, merged);
+    if (hasPendingSubmission(merged)) {
+      message = "Waiting for Codeforces to list or finish the latest submission...";
+    } else if (fetched.length === 0) {
+      message = "No matching Codeforces submissions found yet.";
+    }
   } else {
-    // No handle configured, judge unreachable, or nothing fetched yet: fall
-    // back to whatever we recorded locally.
-    merged = await loadSubmissions(meta.id);
+    // Judge unreachable or API rejected the request: fall back to whatever we
+    // recorded locally, but tell the user the refresh actually ran.
+    merged = local;
+    message = "Could not refresh from Codeforces API. Try again shortly.";
   }
-  submissionData = { problemId: meta.id, status: "done", submissions: merged };
+  submissionData = { problemId: meta.id, status: "done", submissions: merged, message };
   refreshActions();
   return merged;
 }
@@ -1711,7 +1820,7 @@ function stopSubmissionPolling(): void {
 function startSubmissionPolling(meta: ProblemMeta): void {
   stopSubmissionPolling();
   const platform = meta.platform.toLowerCase();
-  const handle = config().get<string>("codeforcesHandle", "").trim();
+  const handle = codeforcesHandle();
   if ((platform !== "codeforces" && platform !== "cf") || !handle) return;
 
   const tick = async (): Promise<void> => {
@@ -2710,6 +2819,12 @@ class CposActionsProvider implements vscode.WebviewViewProvider {
     margin: 0 0 8px;
     animation: subPulse 1.4s ease-in-out infinite;
   }
+  .sub-message {
+    font-size: 10px;
+    color: var(--dim);
+    margin: 0 0 8px;
+    line-height: 1.45;
+  }
   @keyframes subPulse { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
   .sub-list { display: flex; flex-direction: column; gap: 8px; }
   .sub-card {
@@ -3633,6 +3748,9 @@ class CposActionsProvider implements vscode.WebviewViewProvider {
     const checking = busy && list.length > 0
       ? '<div class="sub-checking">&#9680; Checking the judge for verdicts…</div>'
       : '';
+    const message = sub && sub.message
+      ? '<div class="sub-message">' + esc(sub.message) + '</div>'
+      : '';
     const refreshBtn = '<button class="ghost sub-refresh' + (busy ? ' busy' : '')
       + '" data-act="fetchSubmissions" title="Refresh verdicts">&#8635; '
       + (busy ? 'checking…' : 'refresh') + '</button>';
@@ -3642,7 +3760,7 @@ class CposActionsProvider implements vscode.WebviewViewProvider {
       + '<span class="sub-head">Submissions</span>'
       + refreshBtn
       + '</div>'
-      + checking
+      + checking + message
       + body + '</div>';
   }
 
@@ -3848,6 +3966,8 @@ class CposActionsProvider implements vscode.WebviewViewProvider {
   });
 
   send("ready");
+  if (activeTab === "solution") send("fetchSolution");
+  if (activeTab === "submissions") send("fetchSubmissions");
 </script>
 </body>
 </html>`;
