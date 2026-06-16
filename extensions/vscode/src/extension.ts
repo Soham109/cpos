@@ -658,7 +658,11 @@ function solutionPathFor(problem: CapturedProblem, extension: string): string {
   const dir = config().get<boolean>("subfolderPerPlatform", false)
     ? path.join(base, platformSlug(problem.platform))
     : base;
-  return path.join(dir, `${solutionBaseName(problem)}.${extension}`);
+  const filename = config().get<boolean>("useFixedFilename", false)
+    ? config().get<string>("fixedFilename", "main")
+    : solutionBaseName(problem);
+
+  return path.join(dir, `${filename}.${extension}`);
 }
 
 async function resolveSolutionPath(problem: CapturedProblem, extension: string): Promise<string> {

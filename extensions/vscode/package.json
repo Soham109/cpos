@@ -162,6 +162,16 @@
           "type": "object",
           "default": {},
           "description": "Language overrides. Each key maps to { compile, run, extension } with {source}, {output}, and {dir} placeholders. If unset, inherits compile commands from your CPOS app config."
+        },
+        "cpos.useFixedFilename": {
+          "type": "boolean",
+          "default": false,
+          "description": "Always use a fixed filename for captured problems."
+        },
+        "cpos.fixedFilename": {
+          "type": "string",
+          "default": "main",
+          "description": "Filename used when Fixed Filename is enabled."
         }
       }
     },
