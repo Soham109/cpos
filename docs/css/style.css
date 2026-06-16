@@ -433,6 +433,21 @@ code {
   color: #ffe3f1;
 }
 
+.btn-discord {
+  color: #ffffff;
+  background: #5865f2;
+  border-color: #5865f2;
+}
+
+.btn-discord:hover {
+  background: #4752c4;
+  border-color: #4752c4;
+}
+
+.btn-discord svg {
+  color: #ffffff;
+}
+
 /* Hero */
 
 .hero {

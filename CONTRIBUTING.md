@@ -2,7 +2,7 @@
 
 Thanks for taking the time to contribute. CPOS is open source (MIT) — bug reports, ideas, docs fixes, and code are all welcome.
 
-Want to chat first? Join the [CPOS Discord](https://discord.gg/cNtBCGh5) to ask questions, float an idea, or get help with dev setup.
+Want to chat first? Join the [CPOS Discord](https://discord.gg/CZ3UdPDs5k) to ask questions, float an idea, or get help with dev setup.
 
 For security issues, see [SECURITY.md](SECURITY.md) — do not open public issues for vulnerabilities.
 

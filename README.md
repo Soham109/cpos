@@ -15,7 +15,7 @@ Open a problem in your browser. CPOS creates the file, loads the samples, and le
   <img alt="license" src="https://img.shields.io/badge/license-MIT-blue.svg">
   <img alt="rust" src="https://img.shields.io/badge/built%20with-Rust-orange.svg">
   <a href="https://github.com/sponsors/Soham109"><img alt="Sponsor" src="https://img.shields.io/badge/Sponsor-%E2%9D%A4-db61a2?logo=githubsponsors&logoColor=white"></a>
-  <a href="https://discord.gg/cNtBCGh5"><img alt="Discord" src="https://img.shields.io/badge/Discord-join_chat-5865F2?logo=discord&logoColor=white"></a>
+  <a href="https://discord.gg/CZ3UdPDs5k"><img alt="Discord" src="https://img.shields.io/badge/Discord-join_chat-5865F2?logo=discord&logoColor=white"></a>
 </p>
 
 ## Demo
@@ -284,7 +284,7 @@ Having issues? See **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** (TUI install, Ru
 Questions, ideas, or just want to say hi? Join the CPOS Discord:
 
 <p align="center">
-  <a href="https://discord.gg/cNtBCGh5"><img alt="Join CPOS on Discord" src="https://img.shields.io/badge/Join_CPOS_on_Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white"></a>
+  <a href="https://discord.gg/CZ3UdPDs5k"><img alt="Join CPOS on Discord" src="https://img.shields.io/badge/Join_CPOS_on_Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white"></a>
 </p>
 
 It's the best place to ask for help, share workflows, and follow what's coming next. For bugs and feature requests, [GitHub issues](https://github.com/Soham109/cpos/issues) are still the way to go.
@@ -328,7 +328,7 @@ MIT — see [LICENSE](LICENSE).
 
 CPOS is fully open source. You're free to use it, fork it, and build on it.
 
-Contributions are welcome and appreciated — whether that's a bug report, a doc fix, a new platform, or a polish pass on the TUI. Start with **[CONTRIBUTING.md](CONTRIBUTING.md)** for dev setup and PR guidelines, and **[join the Discord](https://discord.gg/cNtBCGh5)** to coordinate, ask questions, or find something to work on.
+Contributions are welcome and appreciated — whether that's a bug report, a doc fix, a new platform, or a polish pass on the TUI. Start with **[CONTRIBUTING.md](CONTRIBUTING.md)** for dev setup and PR guidelines, and **[join the Discord](https://discord.gg/CZ3UdPDs5k)** to coordinate, ask questions, or find something to work on.
 
 | Doc | Purpose |
 | --- | --- |
