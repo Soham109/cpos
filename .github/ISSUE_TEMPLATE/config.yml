@@ -1,5 +1,8 @@
 blank_issues_enabled: true
 contact_links:
+  - name: CPOS Discord community
+    url: https://discord.gg/cNtBCGh5
+    about: Chat with the maintainer and other users — questions, ideas, and contributing
   - name: Question or discussion
     url: https://github.com/Soham109/cpos/issues/new/choose
     about: Ask a question or share feedback (use Feature request if it's an idea)
