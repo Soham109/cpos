@@ -2,6 +2,8 @@
 
 Thanks for taking the time to contribute. CPOS is open source (MIT) — bug reports, ideas, docs fixes, and code are all welcome.
 
+Want to chat first? Join the [CPOS Discord](https://discord.gg/cNtBCGh5) to ask questions, float an idea, or get help with dev setup.
+
 For security issues, see [SECURITY.md](SECURITY.md) — do not open public issues for vulnerabilities.
 
 For how the pieces fit together, see [ARCHITECTURE.md](ARCHITECTURE.md). Release history and current versions are in [CHANGELOG.md](CHANGELOG.md). Common user issues: [TROUBLESHOOTING.md](TROUBLESHOOTING.md).

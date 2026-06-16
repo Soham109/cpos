@@ -278,4 +278,4 @@ Update to **0.3.20+** or reinstall from the latest VSIX/Marketplace build.
 1. Note your versions (VS Code extension, browser companion, terminal app if used).
 2. Copy the **full error** from **Output → CPOS** or your terminal.
 3. Say which step failed: TUI install, capture, Run All, submit, or source install.
-4. [Open an issue](https://github.com/Soham109/cpos/issues) or ask in your community with that info.
+4. [Open an issue](https://github.com/Soham109/cpos/issues) or ask in the [CPOS Discord](https://discord.gg/cNtBCGh5) with that info.
