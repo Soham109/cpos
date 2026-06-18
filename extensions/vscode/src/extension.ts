@@ -43,6 +43,32 @@ type ProblemMeta = Omit<CapturedProblem, "tests"> & {
 
 type Verdict = "AC" | "WA" | "TLE" | "RE" | "CE";
 
+// Superset of the local-run Verdict: a real judge also reports memory/idleness
+// limits, partial scores, and queued/judging states.
+type SubmissionVerdict =
+  | "AC" | "WA" | "TLE" | "MLE" | "ILE" | "RE" | "CE"
+  | "PARTIAL" | "REJECTED" | "PENDING" | "UNKNOWN";
+
+type Submission = {
+  // Judge submission id when known, else a local id so queued submissions render.
+  id: string;
+  problemId: string;
+  submittedAt: string;
+  verdict: SubmissionVerdict;
+  language?: string;
+  detail?: string;
+};
+
+type SubmissionState = {
+  problemId: string;
+  status: "loading" | "done" | "error";
+  submissions: Submission[];
+  message?: string;
+  // True while a poll loop is pinging the judge, so the UI only shows the
+  // "checking…" indicator when we really are checking.
+  polling?: boolean;
+};
+
 type RunResult = {
   index: number;
   verdict: Verdict;
@@ -72,6 +98,13 @@ const PANEL_THEME_KEY = "cpos.panelTheme";
 const runResults = new Map<string, RunResult[]>();
 let runningFor: string | undefined;
 let solutionData: SolutionState | undefined;
+let submissionData: SubmissionState | undefined;
+// Active verdict-polling loop for the Submissions tab (Codeforces only). We
+// keep pinging the judge until the newest submission stops being "Pending".
+let submissionPollTimer: ReturnType<typeof setTimeout> | undefined;
+let submissionPollAttempts = 0;
+const SUBMISSION_POLL_INTERVAL_MS = 3500; // stay within CF API rate limits
+const MAX_SUBMISSION_POLLS = 40;          // ~2.3 min before we give up
 
 // Anti-cheat: never surface editorials/solutions for a problem whose Codeforces
 // contest is still running. We cache CF's contest.list (phase per contest) and
@@ -534,6 +567,7 @@ function absolutizeCommand(command: string): string {
 type TuiConfig = {
   defaultLanguage?: string;
   templateFile?: string;
+  codeforcesHandle?: string;
   compileCommands: Record<string, Partial<CompileConfig>>;
 };
 
@@ -567,7 +601,8 @@ function tuiConfig(): TuiConfig {
 }
 
 // Minimal TOML reader for just the keys we share with the TUI: top-level
-// default_language / template_file and [compile_commands.<lang>] tables.
+// default_language / template_file, [handles], and [compile_commands.<lang>]
+// tables.
 function parseTuiConfig(text: string): TuiConfig {
   const cfg: TuiConfig = { compileCommands: {} };
   let section = "";
@@ -587,6 +622,8 @@ function parseTuiConfig(text: string): TuiConfig {
     if (section === "") {
       if (key === "default_language") cfg.defaultLanguage = value;
       else if (key === "template_file") cfg.templateFile = value;
+    } else if (section === "handles") {
+      if (key === "codeforces") cfg.codeforcesHandle = value;
     } else if (section.startsWith("compile_commands.")) {
       const lang = section.slice("compile_commands.".length);
       const entry = cfg.compileCommands[lang] ?? (cfg.compileCommands[lang] = {});
@@ -881,6 +918,47 @@ function samplePathFor(solutionPath: string): string {
   return path.join(dataDir(), "samples", `${hashPath(solutionPath)}.json`);
 }
 
+// Submissions are stored per problem id so they survive across files, panel
+// reloads, and VS Code restarts. Each problem gets its own JSON file under the
+// data dir keyed by a hash of the problem id.
+function submissionsPathFor(problemId: string): string {
+  return path.join(dataDir(), "submissions", `${hashPath(problemId)}.json`);
+}
+
+async function loadSubmissions(problemId: string): Promise<Submission[]> {
+  try {
+    const raw = await fs.readFile(submissionsPathFor(problemId), "utf8");
+    const parsed = JSON.parse(raw) as Submission[];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+async function saveSubmissions(problemId: string, submissions: Submission[]): Promise<void> {
+  await fs.mkdir(path.join(dataDir(), "submissions"), { recursive: true });
+  await fs.writeFile(
+    submissionsPathFor(problemId),
+    JSON.stringify(submissions, null, 2),
+    "utf8"
+  );
+}
+
+// Merge new submissions into the stored list, de-duplicating by id (a later
+// entry for the same id wins so verdicts can be upgraded from PENDING), then
+// keep them newest-first.
+async function recordSubmission(problemId: string, incoming: Submission): Promise<Submission[]> {
+  const existing = await loadSubmissions(problemId);
+  const byId = new Map<string, Submission>();
+  for (const s of existing) byId.set(s.id, s);
+  byId.set(incoming.id, incoming);
+  const merged = Array.from(byId.values()).sort(
+    (a, b) => Date.parse(b.submittedAt) - Date.parse(a.submittedAt)
+  );
+  await saveSubmissions(problemId, merged);
+  return merged;
+}
+
 async function saveProblemMeta(meta: ProblemMeta): Promise<void> {
   await fs.mkdir(dataDir(), { recursive: true });
   await fs.writeFile(path.join(dataDir(), "last-problem.json"), JSON.stringify(meta, null, 2), "utf8");
@@ -1145,7 +1223,34 @@ async function submitActiveFile(): Promise<void> {
   };
 
   await vscode.env.clipboard.writeText(code);
+  await recordQueuedSubmission(meta, lang);
   void showSubmitQueuedStatus(meta.id, submitUrl, pendingSubmit);
+}
+
+// Log a locally-known submission the moment the user submits, before any
+// verdict is available, so the Submissions tab reflects the attempt right away.
+// The verdict starts as PENDING and is upgraded later when the judge reports
+// back (see fetchAndCacheSubmissions).
+async function recordQueuedSubmission(meta: ProblemMeta, language: string): Promise<void> {
+  const now = new Date();
+  const submission: Submission = {
+    id: `local-${now.getTime()}`,
+    problemId: meta.id,
+    submittedAt: now.toISOString(),
+    verdict: "PENDING",
+    language
+  };
+  const merged = await recordSubmission(meta.id, submission);
+  // Begin polling the judge for the real verdict so the Submissions tab
+  // updates on its own without the user having to refresh.
+  submissionData = {
+    problemId: meta.id,
+    status: "done",
+    submissions: merged,
+    message: queuedSubmissionMessage(meta)
+  };
+  startSubmissionPolling(meta);
+  refreshActions();
 }
 
 async function showSubmitQueuedStatus(problemId: string, submitUrl: string, queued: PendingSubmit): Promise<void> {
@@ -1177,6 +1282,12 @@ function parseCodeforcesId(id: string): { contest?: string; index?: string } {
   const match = id.match(/^(\d+)([A-Za-z]\d*)$/);
   if (!match) return {};
   return { contest: match[1], index: match[2].toUpperCase() };
+}
+
+function codeforcesHandle(): string {
+  const setting = config().get<string>("codeforcesHandle", "").trim();
+  if (setting) return setting;
+  return (tuiConfig().codeforcesHandle ?? "").trim();
 }
 
 // Refresh CF contest phases at most once per minute. On a successful update we
@@ -1401,6 +1512,7 @@ type PanelState = {
   theme?: string;
   solution?: SolutionState;
   solutionBlocked: boolean;
+  submissions?: SubmissionState;
 };
 
 async function currentState(): Promise<PanelState> {
@@ -1409,6 +1521,17 @@ async function currentState(): Promise<PanelState> {
   const tests = source ? await loadSamples(source) : [];
   const results = source ? runResults.get(source) ?? [] : [];
   const solution = meta && solutionData?.problemId === meta.id ? solutionData : undefined;
+  let submissions: SubmissionState | undefined;
+  if (meta) {
+    if (submissionData?.problemId === meta.id) {
+      submissions = { ...submissionData, polling: submissionPollTimer !== undefined };
+    } else {
+      const stored = await loadSubmissions(meta.id);
+      if (stored.length > 0) {
+        submissions = { problemId: meta.id, status: "done", submissions: stored };
+      }
+    }
+  }
   return {
     source,
     fileName: source ? path.basename(source) : "No active file",
@@ -1420,7 +1543,8 @@ async function currentState(): Promise<PanelState> {
     running: runningFor === source && source !== undefined,
     theme: extContext?.globalState.get<string>(PANEL_THEME_KEY),
     solution,
-    solutionBlocked: isSolutionBlocked(meta)
+    solutionBlocked: isSolutionBlocked(meta),
+    submissions
   };
 }
 
@@ -1455,6 +1579,250 @@ async function fetchAndCacheSolution(): Promise<void> {
   const videos = await fetchYouTubeVideos(buildSolutionQuery(meta));
   solutionData = { problemId: meta.id, status: videos.length > 0 ? "done" : "error", videos };
   refreshActions();
+}
+
+// Map a Codeforces API verdict string to our compact SubmissionVerdict.
+function mapCfVerdict(verdict: string | undefined): SubmissionVerdict {
+  switch (verdict) {
+    case "OK": return "AC";
+    case "WRONG_ANSWER": return "WA";
+    case "TIME_LIMIT_EXCEEDED": return "TLE";
+    case "MEMORY_LIMIT_EXCEEDED": return "MLE";
+    case "IDLENESS_LIMIT_EXCEEDED": return "ILE";
+    case "RUNTIME_ERROR": return "RE";
+    case "COMPILATION_ERROR": return "CE";
+    case "PARTIAL": return "PARTIAL";
+    case "REJECTED":
+    case "CHALLENGED": return "REJECTED";
+    case "TESTING":
+    case "SUBMITTED":
+    case undefined:
+    case "":
+      return "PENDING";
+    default: return "UNKNOWN";
+  }
+}
+
+type CfSubmission = {
+  id: number;
+  creationTimeSeconds: number;
+  programmingLanguage?: string;
+  verdict?: string;
+  passedTestCount?: number;
+  problem?: { contestId?: number; index?: string };
+};
+
+// Pull the user's recent submissions for this problem from the public
+// Codeforces API and merge real verdicts into the stored submission list.
+// Requires a configured handle; only Codeforces problems are supported.
+async function fetchCodeforcesSubmissions(meta: ProblemMeta): Promise<Submission[] | undefined> {
+  const platform = meta.platform.toLowerCase();
+  if (platform !== "codeforces" && platform !== "cf") return undefined;
+  const handle = codeforcesHandle();
+  if (!handle) return undefined;
+  const cf = parseCodeforcesId(meta.id);
+  if (!cf.contest) return undefined;
+
+  // Pull a large window so we surface every submission to this problem, not
+  // just the most recent handful across all problems.
+  const url = `https://codeforces.com/api/user.status?handle=${encodeURIComponent(handle)}&from=1&count=10000`;
+  try {
+    const resp = await fetch(url);
+    if (!resp.ok) return undefined;
+    const json = (await resp.json()) as { status?: string; result?: CfSubmission[] };
+    if (json.status !== "OK" || !Array.isArray(json.result)) return undefined;
+    return json.result
+      .filter((s) =>
+        String(s.problem?.contestId ?? "") === cf.contest &&
+        (!cf.index || (s.problem?.index ?? "").toUpperCase() === cf.index))
+      .map((s) => {
+        const verdict = mapCfVerdict(s.verdict);
+        const detail = verdict !== "AC" && typeof s.passedTestCount === "number"
+          ? `test ${s.passedTestCount + 1}`
+          : undefined;
+        return {
+          id: String(s.id),
+          problemId: meta.id,
+          submittedAt: new Date(s.creationTimeSeconds * 1000).toISOString(),
+          verdict,
+          language: s.programmingLanguage,
+          detail
+        } as Submission;
+      });
+  } catch {
+    return undefined;
+  }
+}
+
+function submissionFetchUnavailableMessage(meta: ProblemMeta): string | undefined {
+  const platform = meta.platform.toLowerCase();
+  if (platform !== "codeforces" && platform !== "cf") {
+    return "Automatic verdict refresh is available for Codeforces problems only right now.";
+  }
+  if (!codeforcesHandle()) {
+    return "Set cpos.codeforcesHandle, or [handles].codeforces in your CPOS config, to fetch real verdicts.";
+  }
+  const cf = parseCodeforcesId(meta.id);
+  if (!cf.contest) {
+    return "Could not parse this Codeforces problem id for verdict lookup.";
+  }
+  return undefined;
+}
+
+function queuedSubmissionMessage(meta: ProblemMeta): string | undefined {
+  return submissionFetchUnavailableMessage(meta)
+    ?? "Waiting for Codeforces to report the verdict...";
+}
+
+function isLocalPendingSubmission(submission: Submission): boolean {
+  return submission.verdict === "PENDING" && submission.id.startsWith("local-");
+}
+
+function fetchedCoveringLocalPending(
+  local: Submission,
+  fetched: Submission[],
+  usedFetchedIds: Set<string>
+): string | undefined {
+  const localTime = Date.parse(local.submittedAt);
+  const candidates = fetched
+    .filter((submission) => !usedFetchedIds.has(submission.id))
+    .slice()
+    .sort((a, b) => Date.parse(a.submittedAt) - Date.parse(b.submittedAt));
+  if (!Number.isFinite(localTime)) return candidates[0]?.id;
+  const toleranceMs = 2_000;
+  return candidates.find((submission) => {
+    const fetchedTime = Date.parse(submission.submittedAt);
+    return Number.isFinite(fetchedTime) && fetchedTime >= localTime - toleranceMs;
+  })?.id;
+}
+
+function mergeFetchedSubmissions(local: Submission[], fetched: Submission[]): Submission[] {
+  const byId = new Map<string, Submission>();
+  for (const submission of fetched) byId.set(submission.id, submission);
+  const usedFetchedIds = new Set<string>();
+  const localSorted = local.slice().sort(
+    (a, b) => Date.parse(a.submittedAt) - Date.parse(b.submittedAt)
+  );
+  for (const submission of localSorted) {
+    if (isLocalPendingSubmission(submission)) {
+      const coveringId = fetchedCoveringLocalPending(submission, fetched, usedFetchedIds);
+      if (coveringId) {
+        usedFetchedIds.add(coveringId);
+      } else {
+        byId.set(submission.id, submission);
+      }
+    } else if (!byId.has(submission.id)) {
+      byId.set(submission.id, submission);
+    }
+  }
+  return Array.from(byId.values()).sort(
+    (a, b) => Date.parse(b.submittedAt) - Date.parse(a.submittedAt)
+  );
+}
+
+// Refresh the Submissions tab, then poll until pending verdicts resolve.
+async function fetchAndCacheSubmissions(): Promise<void> {
+  const source = await activeSolutionPath();
+  const meta = source ? await loadProblemMetaForFile(source) : await loadProblemMeta();
+  if (!meta) return;
+
+  submissionData = {
+    problemId: meta.id,
+    status: "loading",
+    submissions: await loadSubmissions(meta.id)
+  };
+  refreshActions();
+
+  const merged = await refreshSubmissionsOnce(meta);
+  // If anything is still being judged, keep polling the judge until it
+  // resolves instead of leaving the user stuck on "Pending".
+  if (hasPendingSubmission(merged)) {
+    startSubmissionPolling(meta);
+  } else {
+    stopSubmissionPolling();
+  }
+}
+
+// One refresh pass: pull the latest verdicts from the judge (when possible),
+// persist them, and push the result to the panel. Returns the merged list so
+// callers (and the poll loop) can decide whether to keep going.
+async function refreshSubmissionsOnce(meta: ProblemMeta): Promise<Submission[]> {
+  const unavailable = submissionFetchUnavailableMessage(meta);
+  const local = await loadSubmissions(meta.id);
+  if (unavailable) {
+    submissionData = {
+      problemId: meta.id,
+      status: "done",
+      submissions: local,
+      message: unavailable
+    };
+    refreshActions();
+    return local;
+  }
+
+  const fetched = await fetchCodeforcesSubmissions(meta);
+  let merged: Submission[];
+  let message: string | undefined;
+  if (fetched) {
+    // Trust the judge's verdicts, but keep a local Pending placeholder when CF
+    // still lists only older attempts, so polling doesn't stop too early.
+    merged = mergeFetchedSubmissions(local, fetched);
+    await saveSubmissions(meta.id, merged);
+    if (hasPendingSubmission(merged)) {
+      message = "Waiting for Codeforces to list or finish the latest submission...";
+    } else if (fetched.length === 0) {
+      message = "No matching Codeforces submissions found yet.";
+    }
+  } else {
+    // Judge unreachable or API rejected the request: fall back to whatever we
+    // recorded locally, but tell the user the refresh actually ran.
+    merged = local;
+    message = "Could not refresh from Codeforces API. Try again shortly.";
+  }
+  submissionData = { problemId: meta.id, status: "done", submissions: merged, message };
+  refreshActions();
+  return merged;
+}
+
+function hasPendingSubmission(list: Submission[]): boolean {
+  return list.some((s) => s.verdict === "PENDING");
+}
+
+function stopSubmissionPolling(): void {
+  if (submissionPollTimer) {
+    clearTimeout(submissionPollTimer);
+    submissionPollTimer = undefined;
+  }
+  submissionPollAttempts = 0;
+}
+
+// Repeatedly re-fetch verdicts until the newest submission resolves (verdict
+// is no longer Pending) or we hit the attempt cap. Only useful for Codeforces
+// with a configured handle — there is no verdict source otherwise.
+function startSubmissionPolling(meta: ProblemMeta): void {
+  stopSubmissionPolling();
+  const platform = meta.platform.toLowerCase();
+  const handle = codeforcesHandle();
+  if ((platform !== "codeforces" && platform !== "cf") || !handle) return;
+
+  const tick = async (): Promise<void> => {
+    submissionPollAttempts++;
+    let merged: Submission[] = [];
+    try {
+      merged = await refreshSubmissionsOnce(meta);
+    } catch {
+      // Transient network/API error — keep trying until the cap.
+    }
+    if (!hasPendingSubmission(merged) || submissionPollAttempts >= MAX_SUBMISSION_POLLS) {
+      stopSubmissionPolling();
+      // Re-render once more so the "checking…" indicator clears now that the
+      // poll loop has stopped.
+      refreshActions();
+      return;
+    }
+    submissionPollTimer = setTimeout(() => { void tick(); }, SUBMISSION_POLL_INTERVAL_MS);
+  };
+  submissionPollTimer = setTimeout(() => { void tick(); }, SUBMISSION_POLL_INTERVAL_MS);
 }
 
 async function fetchYouTubeVideos(query: string): Promise<SolutionVideo[]> {
@@ -1599,6 +1967,9 @@ class CposActionsProvider implements vscode.WebviewViewProvider {
         break;
       case "fetchSolution":
         void fetchAndCacheSolution();
+        break;
+      case "fetchSubmissions":
+        void fetchAndCacheSubmissions();
         break;
       case "openUrl": {
         const url = (message as { url?: string }).url;
@@ -2101,6 +2472,11 @@ class CposActionsProvider implements vscode.WebviewViewProvider {
   .verdict.TLE, .verdict.RE { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 50%, var(--border)); }
   .verdict.run { color: var(--accent); border-color: var(--accent-dim); }
   .verdict.none { display: none; }
+  /* Submission verdicts (superset of the local-run verdicts above). */
+  .verdict.MLE, .verdict.ILE, .verdict.PARTIAL { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 50%, var(--border)); }
+  .verdict.REJECTED { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 50%, var(--border)); }
+  .verdict.PENDING { color: var(--accent); border-color: var(--accent-dim); }
+  .verdict.UNKNOWN { color: var(--dim); border-color: var(--border); }
   .test-body { padding: 8px; display: flex; flex-direction: column; gap: 7px; min-height: 0; }
   .io-grid {
     display: grid;
@@ -2232,8 +2608,9 @@ class CposActionsProvider implements vscode.WebviewViewProvider {
     line-height: 1.6;
     border-style: dashed;
   }
-  .tabs { flex: 0 0 auto; display: flex; gap: 4px; margin-bottom: 10px; border-bottom: 1px solid var(--border-soft); }
-  .tab { padding: 6px 12px; border: none; background: transparent; color: var(--dim); cursor: pointer; border-bottom: 2px solid transparent; font-size: 11px; font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.05em; }
+  .tabs { flex: 0 0 auto; display: flex; gap: 4px; margin-bottom: 10px; border-bottom: 1px solid var(--border-soft); overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; }
+  .tabs::-webkit-scrollbar { height: 4px; }
+  .tab { flex: 0 0 auto; white-space: nowrap; padding: 6px 12px; border: none; background: transparent; color: var(--dim); cursor: pointer; border-bottom: 2px solid transparent; font-size: 11px; font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.05em; }
   .tab.active { color: var(--fg); border-bottom-color: var(--accent); font-weight: 700; }
   .tab:hover:not(.active) { color: var(--fg); }
   .statement-view {
@@ -2402,6 +2779,58 @@ class CposActionsProvider implements vscode.WebviewViewProvider {
     border-radius: var(--radius);
     overflow: hidden;
     margin-bottom: 8px;
+  }
+  .sub-head-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin: 2px 0 10px;
+  }
+  .sub-head {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--fg);
+    letter-spacing: 0.04em;
+  }
+  .sub-refresh { flex: 0 0 auto; }
+  .sub-refresh.busy { color: var(--accent); border-color: var(--accent-dim); }
+  .sub-checking {
+    font-size: 10px;
+    color: var(--accent);
+    margin: 0 0 8px;
+    animation: subPulse 1.4s ease-in-out infinite;
+  }
+  .sub-message {
+    font-size: 10px;
+    color: var(--dim);
+    margin: 0 0 8px;
+    line-height: 1.45;
+  }
+  @keyframes subPulse { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
+  .sub-list { display: flex; flex-direction: column; gap: 8px; }
+  .sub-card {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: color-mix(in srgb, var(--panel) 88%, transparent);
+    padding: 9px 11px;
+  }
+  .sub-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+  .sub-id { font-size: 12px; font-weight: 700; color: var(--fg); }
+  .sub-meta {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px;
+    margin-top: 6px; font-size: 10px; color: var(--dim);
+  }
+  .sub-time { color: var(--dim); }
+  .sub-lang { color: var(--fg); opacity: 0.8; }
+  .sub-detail { color: var(--warn); }
+  .sub-empty { font-size: 11px; color: var(--dim); line-height: 1.5; }
+  .sub-empty code {
+    font-family: var(--mono);
+    background: var(--highlight);
+    padding: 1px 4px;
+    border-radius: 3px;
+    color: var(--fg);
   }
   .acc-header {
     width: 100%;
@@ -3060,6 +3489,7 @@ class CposActionsProvider implements vscode.WebviewViewProvider {
     if (!state.meta) return '';
     const tabs = [{ id: 'tests', label: 'Tests' }];
     if (state.meta.statementHtml) tabs.push({ id: 'statement', label: 'Statement' });
+    tabs.push({ id: 'submissions', label: 'Submissions' });
     // Solution tab is hidden while the problem's contest is still running.
     if (!state.solutionBlocked) tabs.push({ id: 'solution', label: 'Solution' });
     return '<div class="tabs" role="tablist">'
@@ -3233,6 +3663,89 @@ class CposActionsProvider implements vscode.WebviewViewProvider {
       + '</div>';
   }
 
+  // Human label shown inside the verdict badge for each submission.
+  function verdictLabel(v) {
+    switch (v) {
+      case 'AC': return 'Accepted';
+      case 'WA': return 'Wrong Answer';
+      case 'TLE': return 'Time Limit';
+      case 'MLE': return 'Memory Limit';
+      case 'ILE': return 'Idleness Limit';
+      case 'RE': return 'Runtime Error';
+      case 'CE': return 'Compile Error';
+      case 'PARTIAL': return 'Partial';
+      case 'REJECTED': return 'Rejected';
+      case 'PENDING': return 'Pending';
+      default: return 'Unknown';
+    }
+  }
+
+  function formatSubmissionTime(iso) {
+    const d = new Date(iso);
+    if (isNaN(d.getTime())) return '';
+    return d.toLocaleString(undefined, {
+      month: 'short', day: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    });
+  }
+
+  function submissionsSection() {
+    const sub = state.submissions;
+    const status = sub ? sub.status : 'loading';
+    const list = (sub && sub.submissions) ? sub.submissions : [];
+
+    let body;
+    if (status === 'loading' && list.length === 0) {
+      body = '<div class="sol-spinner">&#9680; Loading submissions…</div>';
+    } else if (list.length === 0) {
+      body = '<div class="sub-empty">No submissions yet. Submit from CPOS, or set '
+        + '<code>cpos.codeforcesHandle</code> to pull your judge verdicts.</div>';
+    } else {
+      // Newest first; show every submission to this problem. The list scrolls
+      // inside the wrapper when it grows long.
+      const rows = list.map(function(s, i) {
+        const num = list.length - i;
+        const v = s.verdict || 'UNKNOWN';
+        const detail = s.detail ? '<span class="sub-detail">' + esc(s.detail) + '</span>' : '';
+        const lang = s.language ? '<span class="sub-lang">' + esc(s.language) + '</span>' : '';
+        return '<div class="sub-card">'
+          + '<div class="sub-row">'
+          + '<span class="sub-id">#' + num + '</span>'
+          + '<span class="verdict ' + esc(v) + '">' + esc(verdictLabel(v)) + '</span>'
+          + '</div>'
+          + '<div class="sub-meta">'
+          + '<span class="sub-time">' + esc(formatSubmissionTime(s.submittedAt)) + '</span>'
+          + lang + detail
+          + '</div>'
+          + '</div>';
+      }).join('');
+      body = '<div class="sub-list">' + rows + '</div>';
+    }
+
+    // While CPOS is actively polling the judge (or a refresh is in flight),
+    // show a live "checking" banner so it is obvious we are working on the
+    // verdict rather than stuck. Only shown when we genuinely are checking
+    // (i.e. a Codeforces handle is set and a poll loop is running).
+    const busy = (sub && sub.polling) || status === 'loading';
+    const checking = busy && list.length > 0
+      ? '<div class="sub-checking">&#9680; Checking the judge for verdicts…</div>'
+      : '';
+    const message = sub && sub.message
+      ? '<div class="sub-message">' + esc(sub.message) + '</div>'
+      : '';
+    const refreshBtn = '<button class="ghost sub-refresh' + (busy ? ' busy' : '')
+      + '" data-act="fetchSubmissions" title="Refresh verdicts">&#8635; '
+      + (busy ? 'checking…' : 'refresh') + '</button>';
+
+    return '<div class="sol-wrapper">'
+      + '<div class="sub-head-row">'
+      + '<span class="sub-head">Submissions</span>'
+      + refreshBtn
+      + '</div>'
+      + checking + message
+      + body + '</div>';
+  }
+
   function render() {
     const app = document.getElementById("app");
     let body = "";
@@ -3242,6 +3755,8 @@ class CposActionsProvider implements vscode.WebviewViewProvider {
     try {
       if (activeTab === "statement" && state.meta && state.meta.statementHtml) {
         body = statementSection();
+      } else if (activeTab === "submissions" && state.meta) {
+        body = submissionsSection();
       } else if (activeTab === "solution" && state.meta && !state.solutionBlocked) {
         body = solutionSection();
       } else {
@@ -3278,6 +3793,11 @@ class CposActionsProvider implements vscode.WebviewViewProvider {
   // Update verdicts/results without wiping in-progress textarea edits (same file).
   function patch() {
     const app = document.getElementById("app");
+    // patch() only knows how to update the Tests view in place (to preserve
+    // in-progress textarea edits). For Statement/Submissions/Solution a state
+    // update must do a full render, otherwise their content goes stale (e.g.
+    // submission verdicts never refresh after a fetch).
+    if (activeTab !== "tests") { render(); return; }
     const cards = app.querySelectorAll(".test");
     // If the test count changed (add/delete/new capture), do a full render.
     if (cards.length !== state.tests.length) { render(); return; }
@@ -3358,6 +3878,7 @@ class CposActionsProvider implements vscode.WebviewViewProvider {
           activeTab = el.getAttribute("data-tab") || "tests";
           persistUiState();
           if (activeTab === "solution") send("fetchSolution");
+          if (activeTab === "submissions") send("fetchSubmissions");
           render();
           return;
         }
@@ -3427,6 +3948,8 @@ class CposActionsProvider implements vscode.WebviewViewProvider {
   });
 
   send("ready");
+  if (activeTab === "solution") send("fetchSolution");
+  if (activeTab === "submissions") send("fetchSubmissions");
 </script>
 </body>
 </html>`;

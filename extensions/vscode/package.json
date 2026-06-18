@@ -2,7 +2,7 @@
   "name": "cpos-vscode",
   "displayName": "CPOS",
   "description": "Capture Codeforces & CSES problems, run sample tests, and submit — all from VS Code.",
-  "version": "0.3.31",
+  "version": "0.3.32",
   "publisher": "sohamaggarwal",
   "license": "MIT",
   "icon": "media/icon128.png",
@@ -162,6 +162,11 @@
           "type": "object",
           "default": {},
           "description": "Language overrides. Each key maps to { compile, run, extension } with {source}, {output}, and {dir} placeholders. If unset, inherits compile commands from your CPOS app config."
+        },
+        "cpos.codeforcesHandle": {
+          "type": "string",
+          "default": "",
+          "description": "Your Codeforces handle. Used to fetch real submission verdicts (Accepted, TLE, MLE, …) for the Submissions tab. Leave empty to only track submissions made from CPOS."
         }
       }
     },
