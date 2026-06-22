@@ -20,6 +20,3 @@ graphify-out/cost.json
 graphify-out/manifest.json
 graphify-out/.graphify_*
 
-# local-only working docs (not part of the product)
-CLAUDE.md
-.serena/
