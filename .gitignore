@@ -13,3 +13,13 @@ extensions/vscode/*.vsix
 extensions/chrome/node_modules/
 extensions/chrome/*.zip
 /*.zip
+
+# graphify: keep only the shareable outputs, ignore internal state
+graphify-out/cache/
+graphify-out/cost.json
+graphify-out/manifest.json
+graphify-out/.graphify_*
+
+# local-only working docs (not part of the product)
+CLAUDE.md
+.serena/
