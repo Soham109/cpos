@@ -1,0 +1,58 @@
+name: Deploy graph to GitHub Pages
+
+# Publishes the graphify knowledge graph (graphify-out/graph.html) to GitHub
+# Pages so it can be explored via a link. The docs/ landing site is hosted
+# separately on Vercel, so this only serves the graph artifacts.
+
+on:
+  push:
+    branches: [main, extend-assist]
+    paths:
+      - graphify-out/graph.html
+      - graphify-out/graph.json
+      - graphify-out/GRAPH_REPORT.md
+      - .github/workflows/pages.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow one concurrent deployment; don't cancel an in-progress production deploy.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Assemble site
+        run: |
+          mkdir -p _site
+          # Bare Pages URL serves the interactive graph directly.
+          cp graphify-out/graph.html _site/index.html
+          cp graphify-out/graph.html _site/graph.html
+          cp graphify-out/graph.json _site/graph.json
+          cp graphify-out/GRAPH_REPORT.md _site/GRAPH_REPORT.md
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
