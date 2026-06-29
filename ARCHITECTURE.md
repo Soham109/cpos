@@ -5,7 +5,7 @@ and submission communicate over `127.0.0.1`. The browser companion's Compete
 feature additionally uses public ntfy.sh topics for race delivery and matching;
 Codeforces public submissions act as the referee.
 
-**Current releases:** terminal app 0.2.2 · VS Code extension 0.5.2 · browser companion 0.15.2 (Chrome + Firefox) (see [CHANGELOG.md](CHANGELOG.md)).
+**Current releases:** terminal app 0.2.2 · VS Code extension 0.5.2 · browser companion 0.15.3 (Chrome + Firefox) (see [CHANGELOG.md](CHANGELOG.md)).
 
 ```
 ┌─────────────────┐     capture / submit      ┌──────────────────┐

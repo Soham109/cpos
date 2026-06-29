@@ -254,13 +254,22 @@
   async function processReply(kind, id, from) {
     const map = await loadChallenges();
     const ch = map[id];
-    if (!ch || ch.role !== "out" || ch.status !== C.STATUS.PENDING) return;
+    if (!ch || ch.role !== "out") return;
     if (kind === "accept") {
+      // Accept the reply if the invite is still pending, OR if it only just
+      // lapsed (PENDING -> EXPIRED) but the friend accepted shortly after — a
+      // short invite TTL must never silently drop a real accept. Bound the grace
+      // (a few × the TTL, capped by the race length) so a long-stale invite
+      // can't restart a badly-truncated race.
+      const graceMs = Math.min(ch.durationMin || 60, (C.INVITE_TTL_MIN || 4) * 3) * 60000;
+      const withinGrace = Date.now() - (ch.createdAt || 0) < graceMs;
+      if (ch.status !== C.STATUS.PENDING && !(ch.status === C.STATUS.EXPIRED && withinGrace)) return;
       ch.status = C.STATUS.ACTIVE;
       if (!ch.opponent && from) ch.opponent = from; // bind open challenge to first accepter
       await saveChallenges(map);
       await notify(ch, "✅ Challenge accepted", `${ch.opponent || from || "Your opponent"} accepted — race on for ${C.problemLabel(ch.problem)}!`);
     } else if (kind === "decline") {
+      if (ch.status !== C.STATUS.PENDING) return;
       ch.status = C.STATUS.DECLINED;
       await saveChallenges(map);
       await notify(ch, "Challenge declined", `${from || ch.opponent || "Your opponent"} declined ${C.problemLabel(ch.problem)}.`);
@@ -434,15 +443,13 @@
   }
 
   // ---- listeners (our own; coexist with background.js + cpos-contests.js) -----
-  let tick = 0;
   async function tickPoll() {
     await syncWithApps();                  // first pull any newer VS Code preferences
     await refreshPublicMatches();          // browser owns public-lobby discovery
     await publishPending();                // deliver any unpublished (e.g. VS Code-created) invites
     await pollAll();                       // CF referee
-    if (tick % 2 === 0) await netPollInbox(); // ntfy inbox, ~every 2 minutes
+    await netPollInbox();                  // ntfy inbox — every tick so invites/accepts arrive promptly
     await syncWithApps();                  // push discovered matches and new statuses
-    tick++;
   }
   chrome.alarms.create(POLL_ALARM, { periodInMinutes: POLL_PERIOD_MIN });
   chrome.alarms.onAlarm.addListener((alarm) => {

@@ -24,14 +24,25 @@
   const TIP_ID = "cpos-annotate-tip";
   const STORE_PREFIX = "cpos.annotate.page.";
 
-  // Four flat marker colours (translucent so underlying text stays readable).
+  // Marker colours — the SAME five theme tokens the pen uses (draw.js), drawn as
+  // a translucent highlight so underlying text stays readable. Each slot names a
+  // theme token; the concrete fill is resolved from the active theme at paint /
+  // swatch-render time. Keeping these in lockstep with the pen means one coherent
+  // palette across both tools instead of a separate hardcoded rainbow.
   const COLORS = [
-    { id: "y", fill: "rgba(240, 196, 96, 0.40)" },   // amber
-    { id: "g", fill: "rgba(126, 231, 135, 0.34)" },  // green
-    { id: "b", fill: "rgba(122, 162, 247, 0.36)" },  // blue
-    { id: "p", fill: "rgba(183, 148, 255, 0.38)" }   // purple/pink
+    { id: "ink", token: "--fg" },  // foreground highlight
+    { id: "r", token: "--bad" },   // red
+    { id: "b", token: "--cf" },    // blue
+    { id: "g", token: "--ok" },    // green
+    { id: "y", token: "--warn" }   // amber
   ];
   const colorById = (id) => COLORS.find((c) => c.id === id) || COLORS[0];
+  // Resolve a colour slot to a translucent highlight fill from the active theme.
+  // ~32% alpha keeps text legible; falls back to a neutral tint pre-theme.
+  function colorFill(c) {
+    const hex = (theme && theme[c.token]) || "#8a86a3";
+    return "color-mix(in srgb, " + hex + " 32%, transparent)";
+  }
 
   // ---- page scope ---------------------------------------------------------
   // Only build on supported page kinds. Offsets are anchored against the whole
@@ -206,8 +217,7 @@
       const span = document.createElement("span");
       span.className = MARK_CLASS;
       span.setAttribute("data-cpos-an-id", String(mark.id));
-      const col = colorById(mark.color);
-      span.style.backgroundColor = col.fill;
+      span.style.backgroundColor = colorFill(colorById(mark.color));
       if (mark.note) span.classList.add(NOTE_FLAG);
       target.parentNode.insertBefore(span, target);
       span.appendChild(target);
@@ -267,6 +277,11 @@
       if (theme) {
         s.style.setProperty("--cpos-an-accent", theme["--accent"]);
         s.style.setProperty("--cpos-an-bg", theme["--bg"]);
+        // Highlight fills are theme-derived; refresh them so marks track the
+        // active theme on a switch (the id rides on data-cpos-an-id).
+        const id = parseInt(s.getAttribute("data-cpos-an-id"), 10);
+        const mark = marks.find((m) => m.id === id);
+        if (mark) s.style.backgroundColor = colorFill(colorById(mark.color));
       }
     });
   }
@@ -341,7 +356,7 @@
       sw.type = "button";
       // !important so the fill survives the page-wide `button { background … }`
       // that Modernize / site themes inject (see annotate.css shield).
-      sw.style.setProperty("background-color", c.fill, "important");
+      sw.style.setProperty("background-color", colorFill(c), "important");
       sw.setAttribute("aria-pressed", c.id === mark.color ? "true" : "false");
       sw.addEventListener("click", () => {
         mark.color = c.id;
@@ -494,6 +509,7 @@
   // The "Marker" tool in draw.js calls these; everything else stays private.
   self.CPOS_ANNOTATE = {
     COLORS,
+    colorFill,                      // resolve a colour slot → translucent fill
     getActiveColor: () => activeColor,
     setActiveColor: (id) => { if (COLORS.some((c) => c.id === id)) activeColor = id; },
     applySelection,                 // highlight the current/remembered selection

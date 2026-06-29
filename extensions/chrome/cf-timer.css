@@ -11,8 +11,8 @@
   background: var(--panel, #ffffff);
   color: var(--fg, #1f2328);
   border: 1px solid var(--border, #d5d7dc);
-  border-radius: 10px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+  border-radius: var(--radius, 12px);
+  box-shadow: var(--shadow-float, 0 8px 24px rgba(0, 0, 0, 0.18));
   font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
   font-size: 13px;
   line-height: 1;
@@ -36,7 +36,7 @@
 
 #cpos-timer .cpos-timer-label {
   color: var(--dim, #6b7280);
-  font-family: ui-sans-serif, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-family: var(--font-sans, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif);
   font-size: 10px;
   font-weight: 800;
   letter-spacing: 0.08em;
@@ -62,7 +62,7 @@
   padding: 0;
   margin: 0;
   border: 1px solid var(--border, #d5d7dc);
-  border-radius: 6px;
+  border-radius: var(--radius-sm, 8px);
   background: var(--panel-2, #f0f1f3);
   color: var(--fg, #1f2328);
   cursor: pointer;

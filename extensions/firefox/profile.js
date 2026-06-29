@@ -64,9 +64,9 @@
     if (!rows || !rows.length) return '<div class="cpos-empty">No data yet.</div>';
     const max = Math.max(...rows.map((r) => r.value), 1);
     const style = lblW ? ' style="--lblw:' + lblW + 'px"' : "";
-    return '<div class="cpos-bars"' + style + ">" + rows.map((r) => {
+    return '<div class="cpos-bars"' + style + ">" + rows.map((r, i) => {
       const pct = Math.max(3, Math.round((r.value / max) * 100));
-      const color = colorFn ? colorFn(r) : "var(--accent)";
+      const color = colorFn ? colorFn(r, i) : "var(--accent)";
       const title = r.title ? ' title="' + esc(r.title) + '"' : "";
       return '<div class="cpos-bar" style="--bar-clr:' + color + '"' + title + '><span class="lbl" title="' + esc(r.label) + '">' + esc(r.label) + "</span>" +
         '<span class="track"><span class="fill" style="width:' + pct + '%"></span></span>' +
@@ -111,7 +111,7 @@
     const trailing = 6 - today.getDay(); // blank cells after today in last column
     const total = WEEKS * 7;
     const cells = [];
-    let maxC = 1, sum = 0, active = 0;
+    let sum = 0, active = 0;
     const monthMarks = [];
     let prevMonth = -1, col = 0;
     for (let i = total - 1; i >= 0; i--) {
@@ -120,7 +120,6 @@
       const d = new Date(today);
       d.setDate(d.getDate() - offset);
       const c = byDay[ymd(d)] || 0;
-      maxC = Math.max(maxC, c);
       sum += c;
       if (c > 0) active++;
       // month label appears in the row that starts a new month (Sundays)
@@ -130,10 +129,22 @@
       }
       cells.push({ c, date: ymd(d), label: d.getDate() + " " + MONTHS[d.getMonth()] });
     }
+    // Bucket by percentile of the nonzero daily counts so a single outlier day
+    // doesn't flatten the whole signature to l1/l2 (quartile splits → l1..l4).
+    const nz = cells.filter((cell) => !cell.blank && cell.c > 0).map((cell) => cell.c).sort((a, b) => a - b);
+    const q = (p) => (nz.length ? nz[Math.min(nz.length - 1, Math.floor(p * nz.length))] : 1);
+    const q1 = q(0.25), q2 = q(0.5), q3 = q(0.75);
+    const level = (c) => {
+      if (c <= 0) return 0;
+      if (c > q3) return 4;
+      if (c > q2) return 3;
+      if (c > q1) return 2;
+      return 1;
+    };
     const cellHtml = cells.map((cell) => {
       if (cell.blank) return '<span class="cpos-hc blank"></span>';
       const c = cell.c;
-      const lvl = c === 0 ? 0 : c >= maxC * 0.66 ? 4 : c >= maxC * 0.33 ? 3 : c >= maxC * 0.12 ? 2 : 1;
+      const lvl = level(c);
       return '<span class="cpos-hc l' + lvl + '" title="' + cell.label + ": " + c + (c === 1 ? " submission" : " submissions") + '"></span>';
     }).join("");
     const monthHtml = monthMarks.map((m) => '<span style="grid-column:' + (m.col + 1) + '">' + m.label + "</span>").join("");
@@ -433,9 +444,11 @@
     side("", "Verdicts",
       donut(topRows(st.verdicts, 8).map((r) => ({ label: prettyVerdict(r.label), value: r.value })), verdictColor));
 
-    // 6) Top tags
+    // 6) Top tags — ranked intensity ramp so the top tag reads hottest, fading
+    //    toward --dim down the list (capped at 40% accent to stay legible).
     main("span2", "Top tags solved (distinct problems)",
-      bars(topRows(st.tagCount, 14), null, 130));
+      bars(topRows(st.tagCount, 14),
+        (r, i) => "color-mix(in srgb, var(--accent) " + Math.max(40, 100 - i * 6) + "%, var(--dim))", 130));
 
     // 7) Languages donut
     side("", "Languages used", donut(topRows(st.langs, 6)));

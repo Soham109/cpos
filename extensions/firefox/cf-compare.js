@@ -25,6 +25,10 @@
   const CACHE_TTL = 10 * 60 * 1000;              // 10 min
   const MAX_HANDLES = 6;
 
+  // Active theme id (kept current by applyTheme) so the series palette can be
+  // resolved from theme tokens at render time.
+  let activeThemeId = (T && T.DEFAULT_THEME) || "light";
+
   // [minRating, title, color] — mirrors Codeforces' tier palette (and profile.js).
   const RANKS = [
     [0, "Newbie", "#9aa0a6"], [1200, "Pupil", "#42c267"], [1400, "Specialist", "#41b5b3"],
@@ -32,8 +36,16 @@
     [2300, "Int. Master", "#f0a13e"], [2400, "Grandmaster", "#ff5b5b"], [2600, "Int. Grandmaster", "#ff3333"],
     [3000, "Legendary GM", "#ff0000"]
   ];
-  // Distinct, accent-ish line colors for the overlay (one per handle).
-  const LINE_COLORS = ["#7aa2f7", "#f7768e", "#7ee787", "#f0b860", "#bb9af7", "#56d4dd"];
+  // Series palette for the overlay/legend/dots — derived from the ACTIVE theme
+  // (one distinct color per handle) so it stays in harmony on every theme rather
+  // than the old hardcoded Tokyo-Night blues. The per-RANK tier colors above are
+  // CF-canonical and intentionally left untouched.
+  const SERIES_TOKENS = ["--accent", "--cf", "--ok", "--warn", "--bad", "--accent-dim"];
+  const SERIES_FALLBACK = ["#6b7280", "#44546a", "#1a7f37", "#9a6700", "#cf222e", "#4b5563"];
+  function seriesPalette() {
+    const tk = (T && T.get) ? T.get(activeThemeId) : null;
+    return SERIES_TOKENS.map((tok, i) => (tk && tk[tok]) || SERIES_FALLBACK[i]);
+  }
 
   const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   function el(tag, cls, html) { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
@@ -166,8 +178,8 @@
       const tds = data.map((d, i) => {
         const v = vals[i];
         const isLeader = leader != null && v != null && v === leader;
-        return '<td class="' + (isLeader ? "cpos-cmp-lead" : "") + '">' + row.fmt(v, d) +
-          (isLeader ? '<span class="cpos-cmp-crown" title="leader">★</span>' : "") + "</td>";
+        return '<td class="' + (isLeader ? "cpos-cmp-lead" : "") + '"' +
+          (isLeader ? ' aria-label="leader"' : "") + ">" + row.fmt(v, d) + "</td>";
       }).join("");
       return '<tr><th class="cpos-cmp-rl">' + esc(row.label) + "</th>" + tds + "</tr>";
     }).join("");
@@ -291,7 +303,8 @@
   // ── theme ────────────────────────────────────────────────────────────────
   async function applyTheme(root) {
     if (!T || !C) return;
-    T.applyTheme(root, await (C.activePageThemeId ? C.activePageThemeId() : C.activeThemeId()));
+    activeThemeId = await (C.activePageThemeId ? C.activePageThemeId() : C.activeThemeId());
+    T.applyTheme(root, activeThemeId);
   }
 
   // ── persistence of extra handles ───────────────────────────────────────────
@@ -334,7 +347,8 @@
     }));
 
     if (token !== rendering || !document.getElementById(ROOT_ID)) return; // superseded / removed
-    const colorOf = (i) => LINE_COLORS[i % LINE_COLORS.length];
+    const palette = seriesPalette();
+    const colorOf = (i) => palette[i % palette.length];
 
     body.innerHTML =
       '<div class="cpos-cmp-section">' + statTable(data, colorOf) + "</div>" +

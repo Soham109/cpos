@@ -152,7 +152,7 @@
   }
 
   // ── per-problem submission-count column ─────────────────────────────────────
-  // Adds a tidy "× solved" badge cell to each problems table (header + rows),
+  // Adds a tidy "Solved" count cell to each problems table (header + rows),
   // robust to old (m1/m2/m3) and modern CF DOM by appending a new last cell.
   function injectCounts(stats) {
     if (!stats) return;
@@ -162,7 +162,7 @@
         const th = document.createElement("th");
         th.className = COUNT_CELL;
         th.title = "Number of users who solved the problem (CPOS)";
-        th.textContent = "× solved";
+        th.textContent = "Solved";
         headRow.appendChild(th);
       }
       table.querySelectorAll("tr").forEach((tr) => {
@@ -171,7 +171,7 @@
         if (!key) return;
         let cell = tr.querySelector("." + COUNT_CELL);
         const n = stats.get(key);
-        const html = n == null ? '<span class="cpos-cf-count dim">·</span>'
+        const html = n == null ? '<span class="cpos-cf-count dim" title="No solve-count data">—</span>'
           : '<span class="cpos-cf-count" title="' + n + ' solved">' + esc(fmtCount(n)) + "</span>";
         if (!cell) { cell = document.createElement("td"); cell.className = COUNT_CELL; tr.appendChild(cell); }
         if (cell.innerHTML !== html) cell.innerHTML = html;

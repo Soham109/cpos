@@ -58,6 +58,23 @@
     if (h > 0) return `in ${h}h ${m}m`;
     return `in ${m}m`;
   }
+  // Proximity bucket for color-grading the countdown. Reserve --accent.
+  function countdownClass(startSeconds) {
+    const ms = startSeconds * 1000 - Date.now();
+    if (ms < 60 * 60 * 1000) return "cc-cd is-soon"; // < 1h
+    if (ms < 24 * 60 * 60 * 1000) return "cc-cd is-near"; // < 24h
+    return "cc-cd is-far";
+  }
+  // Compact contest length, e.g. "2h", "90m", "2h 30m".
+  function fmtDuration(durationSeconds) {
+    if (!Number.isFinite(durationSeconds) || durationSeconds <= 0) return "";
+    const mins = Math.round(durationSeconds / 60);
+    const h = Math.floor(mins / 60);
+    const m = mins % 60;
+    if (h <= 0) return `${m}m`;
+    if (m === 0) return `${h}h`;
+    return `${h}h ${m}m`;
+  }
   function fmtLocal(startSeconds) {
     try {
       return new Date(startSeconds * 1000).toLocaleString([], {
@@ -79,13 +96,54 @@
     return e;
   }
 
+  // Inline SVG icon (24x24 viewBox, stroke=currentColor) built without innerHTML
+  // so it stays CSP-safe. `paths` is an array of path "d" strings.
+  const SVG_NS = "http://www.w3.org/2000/svg";
+  function icon(paths, label) {
+    const svg = document.createElementNS(SVG_NS, "svg");
+    svg.setAttribute("viewBox", "0 0 24 24");
+    svg.setAttribute("width", "16");
+    svg.setAttribute("height", "16");
+    svg.setAttribute("fill", "none");
+    svg.setAttribute("stroke", "currentColor");
+    svg.setAttribute("stroke-width", "1.8");
+    svg.setAttribute("stroke-linecap", "round");
+    svg.setAttribute("stroke-linejoin", "round");
+    if (label) {
+      svg.setAttribute("role", "img");
+      svg.setAttribute("aria-label", label);
+    } else {
+      svg.setAttribute("aria-hidden", "true");
+    }
+    for (const d of paths) {
+      const p = document.createElementNS(SVG_NS, "path");
+      p.setAttribute("d", d);
+      svg.appendChild(p);
+    }
+    return svg;
+  }
+  // Circular-arrow refresh glyph.
+  const REFRESH_PATHS = [
+    "M3 12a9 9 0 0 1 15-6.7L21 8",
+    "M21 3v5h-5",
+    "M21 12a9 9 0 0 1-15 6.7L3 16",
+    "M3 21v-5h5"
+  ];
+
   function render() {
     root.innerHTML = "";
 
     const head = el("div", "cc-head");
-    head.appendChild(el("span", "cc-title", "Upcoming contests"));
-    const refresh = el("button", "cc-refresh", "↻");
-    refresh.title = "Refresh";
+    const titles = el("div", "cc-titles");
+    titles.appendChild(el("span", "cc-title", "Upcoming contests"));
+    titles.appendChild(el("span", "cc-scope", "Codeforces · upcoming"));
+    head.appendChild(titles);
+    const refresh = el("button", "cc-refresh");
+    refresh.type = "button";
+    refresh.title = "Refresh contests";
+    refresh.setAttribute("aria-label", "Refresh contests");
+    refresh.appendChild(icon(REFRESH_PATHS)); // button carries the label; icon is decorative
+    if (state.loading) refresh.classList.add("is-busy");
     refresh.onclick = () => doRefresh(true);
     head.appendChild(refresh);
     root.appendChild(head);
@@ -112,11 +170,25 @@
       return;
     }
     if (state.loading && state.contests.length === 0) {
-      root.appendChild(el("div", "cc-empty", "Loading contests…"));
+      const skel = el("div", "cc-skeleton");
+      skel.setAttribute("aria-label", "Loading contests");
+      skel.setAttribute("aria-busy", "true");
+      for (let i = 0; i < 3; i++) {
+        const row = el("div", "cc-skel-row");
+        const lines = el("div", "cc-skel-lines");
+        lines.appendChild(el("span", "cc-skel-bar cc-skel-name"));
+        lines.appendChild(el("span", "cc-skel-bar cc-skel-meta"));
+        row.appendChild(lines);
+        row.appendChild(el("span", "cc-skel-bar cc-skel-sw"));
+        skel.appendChild(row);
+      }
+      root.appendChild(skel);
       return;
     }
     if (state.contests.length === 0) {
-      root.appendChild(el("div", "cc-empty", "No upcoming contests found."));
+      root.appendChild(
+        el("div", "cc-empty", "No contests scheduled yet — check back after the next round is announced.")
+      );
       return;
     }
 
@@ -128,7 +200,9 @@
       info.appendChild(el("div", "cc-name", c.name));
       const meta = el("div", "cc-meta");
       meta.appendChild(el("span", "cc-when", fmtLocal(c.startTimeSeconds)));
-      meta.appendChild(el("span", "cc-cd", fmtCountdown(c.startTimeSeconds)));
+      meta.appendChild(el("span", countdownClass(c.startTimeSeconds), fmtCountdown(c.startTimeSeconds)));
+      const dur = fmtDuration(c.durationSeconds);
+      if (dur) meta.appendChild(el("span", "cc-dur", dur));
       info.appendChild(meta);
       item.appendChild(info);
 
@@ -165,6 +239,25 @@
     render();
   }
 
+  // Keep countdowns live while the popup stays open: re-render every 30s so the
+  // "in 2d 3h" text and its proximity color stay accurate. Cleared on teardown.
+  let tickTimer = null;
+  function startTick() {
+    if (tickTimer != null) return;
+    tickTimer = setInterval(() => {
+      // Cheap: re-render at most ~30 rows; recomputes countdowns + grading.
+      if (state.featureOn && state.contests.length > 0) render();
+    }, 30000);
+  }
+  function teardown() {
+    if (tickTimer != null) {
+      clearInterval(tickTimer);
+      tickTimer = null;
+    }
+  }
+  window.addEventListener("pagehide", teardown);
+  window.addEventListener("unload", teardown);
+
   // React to background updates / toggles flipped elsewhere in the popup.
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== "local") return;
@@ -176,6 +269,7 @@
   (async function init() {
     await loadState();
     render();
+    startTick();
     doRefresh(false);
   })();
 })();

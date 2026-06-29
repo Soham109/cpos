@@ -36,6 +36,11 @@
 
   const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   function el(tag, cls, html) { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
+  // Inline SVG control glyph (a quiet checkmark) — replaces the "✓" text glyph
+  // so the active state matches the rest of the CPOS icon set.
+  const SVG_CHECK = '<svg class="cpos-st-ico" viewBox="0 0 24 24" width="14" height="14" ' +
+    'fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" ' +
+    'stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>';
 
   function contestId() {
     const m = location.pathname.match(/\/contest\/(\d+)\/standings/);
@@ -203,7 +208,7 @@
       btn.classList.toggle("on", friendsOnly);
       btn.setAttribute("aria-pressed", String(friendsOnly));
       const lbl = btn.querySelector(".cpos-st-friends-lbl");
-      if (lbl) lbl.textContent = friendsOnly ? "Friends only ✓" : "Friends only";
+      if (lbl) lbl.innerHTML = "Friends only" + (friendsOnly ? " " + SVG_CHECK : "");
     }
   }
   function clearFilter() {
@@ -232,7 +237,8 @@
         legend.appendChild(chip);
       }
     } else {
-      legend.appendChild(el("span", "cpos-st-lbl", "Language data unavailable"));
+      legend.appendChild(el("span", "cpos-st-lbl",
+        "Language data unavailable — open the contest standings while logged in to populate."));
     }
     root.appendChild(legend);
 

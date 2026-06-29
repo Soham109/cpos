@@ -14,7 +14,7 @@ feature is individually toggleable from the popup, and everything stays read-onl
 uses public ntfy.sh topics containing race metadata and replies—not source code,
 cookies, or passwords.
 
-**Current version:** 0.15.2 (see [CHANGELOG.md](../../CHANGELOG.md)).
+**Current version:** 0.15.3 (see [CHANGELOG.md](../../CHANGELOG.md)).
 
 ## Permissions
 

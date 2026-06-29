@@ -40,8 +40,14 @@
   border-radius: 7px; padding: 5px 8px; font: inherit; cursor: pointer;
 }
 #cpos-practice-section .cpos-pr-sub {
-  font-size: 10.5px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--fg);
+}
+#cpos-practice-section .cpos-pr-sub .cpos-pr-count {
+  font-weight: 400;
   color: var(--dim);
+  font-variant-numeric: tabular-nums;
 }
 #cpos-practice-section .cpos-pr-off {
   font-size: 11px;
@@ -70,11 +76,12 @@
   flex: 0 0 auto;
   font-size: 11px;
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
   color: var(--fg);
   background: var(--panel-2);
   border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 1px 6px;
+  border-radius: var(--radius-pill, 999px);
+  padding: 1px 7px;
 }
 
 #cpos-practice-section .cpos-pr-btn {
@@ -101,20 +108,25 @@
   flex: 1 1 0;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 2px;
+  align-items: flex-start;
+  text-align: left;
+  gap: 3px;
   background: var(--panel-2);
   border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 7px 4px;
+  border-radius: var(--radius-sm, 8px);
+  padding: 8px 10px;
 }
 #cpos-practice-section .cpos-pr-stat b {
   font-size: 18px;
   font-weight: 800;
-  color: var(--accent);
+  color: var(--fg);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.05;
 }
 #cpos-practice-section .cpos-pr-stat span {
-  font-size: 10px;
+  font-size: 9.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.09em;
   color: var(--dim);
 }
 
@@ -135,19 +147,31 @@
 }
 #cpos-practice-section .cpos-pr-x {
   flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   font: inherit;
-  font-size: 14px;
   line-height: 1;
   color: var(--dim);
   background: transparent;
   border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 1px 6px;
+  border-radius: var(--radius-sm, 8px);
+  padding: 4px;
   cursor: pointer;
 }
+#cpos-practice-section .cpos-pr-x svg { display: block; }
 #cpos-practice-section .cpos-pr-x:hover {
   color: var(--bad);
   border-color: var(--bad);
+}
+
+/* keyboard focus ring for interactive practice controls */
+#cpos-practice-section select:focus-visible,
+#cpos-practice-section .cpos-pr-btn:focus-visible,
+#cpos-practice-section .cpos-pr-link:focus-visible,
+#cpos-practice-section .cpos-pr-x:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 
 /* ── on-page: homepage banner ──────────────────────────────────────────────── */

@@ -132,6 +132,15 @@
     return p.name ? `${p.id} — ${p.name}` : p.id;
   }
 
+  // Invites arrive over a PUBLIC ntfy topic, so the embedded problem URL is
+  // attacker-controllable. Only trust a real Codeforces https URL; otherwise
+  // rebuild it from the (validated) contest/index. Blocks javascript:/data: hrefs.
+  function safeCfUrl(u, contestId, index) {
+    const s = String(u || "");
+    if (/^https:\/\/codeforces\.com\//i.test(s)) return s;
+    return `https://codeforces.com/contest/${contestId}/problem/${index}`;
+  }
+
   // ---- challenge encode / decode (compact keys keep the link short) ----------
   // Wire shape: { i:id, f:from, t:to, p:{c,x,n,u,r}, s:startSec, d:durationMin, k:nonce }
   function encode(ch) {
@@ -167,7 +176,7 @@
           index: x,
           id: `${c}${x}`,
           name: String(o.p.n || ""),
-          url: String(o.p.u || `https://codeforces.com/contest/${c}/problem/${x}`),
+          url: safeCfUrl(o.p.u, c, x),
           rating: Number(o.p.r) || 0
         },
         createdAt: (Number(o.s) || 0) * 1000,
@@ -237,7 +246,7 @@
     STORE_KEY, HANDLE_KEY, NOTIFY_KEY, PROBLEMS_KEY, SETTINGS_KEY, PUBLIC_MATCHES_KEY, FEATURE, STATUS, TERMINAL, LINK_PARAM,
     ONLINE_KEY, NET_SINCE_KEY, NTFY_BASE, TOPIC_PREFIX, LOBBY_TOPIC, NET_TAG, INVITE_TTL_MIN,
     b64urlEncode, b64urlDecode, makeId, genNonce,
-    parseProblem, problemLabel, encode, decode, link, deadlineAt, inviteExpired, inviteSecondsLeft,
+    parseProblem, problemLabel, safeCfUrl, encode, decode, link, deadlineAt, inviteExpired, inviteSecondsLeft,
     firstAcSeconds, resolve,
     topicForHandle, buildInvite, buildReply, parseNetBody
   };

@@ -47,11 +47,12 @@
     hairline: "rgba(128,128,128,0.18)",
     hairlineSoft: "rgba(128,128,128,0.12)",
 
-    // Font stacks.
+    // Font stacks. (No webfont leads — MV3 CSP blocks them, so they'd silently
+    // fall back to system-ui anyway; lead with it directly for one honest voice.)
     fontSans:
-      '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, "Helvetica Neue", Arial, sans-serif',
+      '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, "Helvetica Neue", Arial, sans-serif',
     fontMono:
-      '"JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace',
+      'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace',
 
     // Type scale.
     fsBase: "14.5px",
@@ -918,7 +919,14 @@
       `--c-fg:${p.fg}`, `--c-dim:${p.dim}`, `--c-border:${p.border}`,
       `--c-accent:${p.accent}`, `--c-accent-dim:${p.accentDim}`,
       `--c-accent-on:${p.accentOn}`, `--c-ok:${p.ok}`, `--c-bad:${p.bad}`,
-      `--c-warn:${p.warn}`, `--c-stripe:${p.stripe}`, `--c-hover:${p.hover}`
+      `--c-warn:${p.warn}`, `--c-stripe:${p.stripe}`, `--c-hover:${p.hover}`,
+      // Accent tint ladder (wash < soft < dim < accent) so a hint never needs full accent.
+      `--c-accent-soft:${alpha(p.accent, 0.16)}`, `--c-accent-wash:${alpha(p.accent, 0.08)}`,
+      // Shared geometry / type / elevation, so static injected CSS can use var(--radius)/etc
+      // with a single source of truth (also mirrors the popup's STRUCT tokens).
+      `--radius-sm:${STRUCT.radiusSm}`, `--radius:${STRUCT.radius}`, `--radius-lg:${STRUCT.radiusLg}`,
+      `--radius-pill:${STRUCT.radiusPill}`, `--font-sans:${STRUCT.fontSans}`, `--font-mono:${STRUCT.fontMono}`,
+      `--shadow-float:0 1px 2px ${alpha(p.fg, 0.09)}, 0 8px 24px ${alpha(p.fg, 0.13)}`
     ].join(";");
   }
 

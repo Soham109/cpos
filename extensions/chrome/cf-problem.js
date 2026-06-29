@@ -39,6 +39,17 @@
     for (const [thr, , col] of RANKS) if (r >= thr) c = col;
     return c;
   }
+  // Rank/tier name for a rating (e.g. 1600 → "Expert"); "" when below the first named tier.
+  function ratingRank(r) {
+    if (r == null) return "";
+    let name = "";
+    for (const [thr, title] of RANKS) if (r >= thr && title !== "—") name = title;
+    return name;
+  }
+
+  // Focus-toggle glyphs: outward arrows (expand) when off, inward (contract) when on.
+  const FOCUS_OFF_SVG = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7V3h4 M21 7V3h-4 M3 17v4h4 M21 17v4h-4"/></svg>';
+  const FOCUS_ON_SVG = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3v4H3 M17 3v4h4 M7 21v-4H3 M17 21v-4h4"/></svg>';
 
   const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   function el(tag, cls, html) { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
@@ -276,16 +287,18 @@
       return;
     }
     if (prefs.ratingHidden) {
-      const b = button("cpos-cf-badge hidden", "★ Show rating", async () => {
+      const b = button("cpos-cf-badge hidden", "Show rating", async () => {
         await setPrefs({ ratingHidden: false });
         rerender();
       });
       target.appendChild(b);
       return;
     }
-    const badge = el("span", "cpos-cf-badge", "★ " + rating);
+    const rankName = ratingRank(rating);
+    const badge = el("span", "cpos-cf-badge", (rankName ? esc(rankName) + " " : "") + rating);
     badge.style.color = ratingColor(rating);
     badge.style.borderColor = ratingColor(rating);
+    badge.setAttribute("aria-label", "Rating " + rating + (rankName ? " (" + rankName + ")" : ""));
     target.appendChild(badge);
   }
 
@@ -379,7 +392,7 @@
     } else if (btn.parentElement !== anchor) {
       anchor.appendChild(btn);
     }
-    btn.textContent = on ? "-" : "+";
+    btn.innerHTML = on ? FOCUS_ON_SVG : FOCUS_OFF_SVG;
     btn.title = on ? "Exit focus mode" : "Focus problem";
     btn.setAttribute("aria-label", btn.title);
     btn.classList.toggle("on", !!on);

@@ -58,7 +58,7 @@
     const style = el("style", { id: "cpos-compete-style" });
     style.textContent =
       "#cpos-challenges-section{display:flex;flex-direction:column;gap:9px;font-size:12px}" +
-      "#cpos-challenges-section .ch-card{border:1px solid var(--border);border-radius:10px;padding:10px;background:var(--panel-2)}" +
+      "#cpos-challenges-section .ch-card{border:1px solid var(--border);border-radius:var(--radius,12px);padding:9px;background:var(--panel-2)}" +
       "#cpos-challenges-section .ch-head{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px}" +
       "#cpos-challenges-section .ch-title{font-weight:750;color:var(--fg)}" +
       "#cpos-challenges-section .ch-note{font-size:10px;line-height:1.4;color:var(--dim);margin-top:2px}" +
@@ -85,7 +85,7 @@
       "#cpos-challenges-section .ch-who{flex:1;min-width:0}" +
       "#cpos-challenges-section .ch-prob{display:block;color:var(--accent);font-weight:650;text-decoration:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}" +
       "#cpos-challenges-section .ch-sub{font-size:10px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}" +
-      "#cpos-challenges-section .ch-badge{font-size:9px;font-weight:750;color:#fff;padding:3px 7px;border-radius:20px;white-space:nowrap}" +
+      "#cpos-challenges-section .ch-badge{font-size:9px;font-weight:750;padding:3px 7px;border-radius:var(--radius-pill,999px);white-space:nowrap}" +
       "#cpos-challenges-section .ch-x{border:0;background:transparent;color:var(--dim);cursor:pointer;padding:2px}" +
       "@media(max-width:360px){#cpos-challenges-section .ch-two,#cpos-challenges-section .ch-identity{flex-direction:column}}";
     document.head.appendChild(style);
@@ -287,7 +287,9 @@
       .filter((challenge) => challenge && challenge.status !== C.STATUS.REMOVED)
       .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
       .slice(0, 12);
-    if (!races.length) list.appendChild(el("div", { class: "ch-empty" }, "No races yet."));
+    if (!races.length) list.appendChild(el("div", { class: "ch-empty" }, handle
+      ? "No races yet — send a friend a challenge or publish an open race."
+      : "Set your Codeforces handle above to start a race."));
     races.forEach((challenge) => {
       const opponent = challenge.opponent ? `${challenge.role === "out" ? "vs" : "from"} ${challenge.opponent}` : "open";
       const row = raceRow(challenge, opponent);
@@ -303,12 +305,18 @@
         row.append(accept, decline);
       } else {
         const badgeData = {
-          pending: ["Pending", "#f59f00"], active: ["Racing", "#7c5cff"], won: ["Won", "#2f9e44"],
-          lost: ["Lost", "#e03131"], draw: ["Draw", "#f08c00"], expired: ["Expired", "#868e96"], declined: ["Declined", "#868e96"]
-        }[challenge.status] || [challenge.status, "#868e96"];
-        const badge = el("span", { class: "ch-badge" }, badgeData[0]); badge.style.background = badgeData[1]; row.appendChild(badge);
+          pending: ["Pending", "var(--warn)"], active: ["Racing", "var(--accent)"], won: ["Won", "var(--ok)"],
+          lost: ["Lost", "var(--bad)"], draw: ["Draw", "var(--warn)"], expired: ["Expired", "var(--dim)"], declined: ["Declined", "var(--dim)"]
+        }[challenge.status] || [challenge.status, "var(--dim)"];
+        const badge = el("span", { class: "ch-badge" }, badgeData[0]);
+        const token = badgeData[1];
+        badge.style.background = "color-mix(in srgb, " + token + " 16%, transparent)";
+        badge.style.color = token;
+        badge.style.border = "1px solid color-mix(in srgb, " + token + " 40%, transparent)";
+        row.appendChild(badge);
       }
-      const remove = el("button", { type: "button", class: "ch-x", title: "Remove" }, "✕");
+      const remove = el("button", { type: "button", class: "ch-x", title: "Remove", "aria-label": "Remove" });
+      remove.innerHTML = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 5l14 14M19 5L5 19"/></svg>';
       remove.addEventListener("click", async () => {
         challenge.status = C.STATUS.REMOVED;
         challenge.removedAt = Date.now();

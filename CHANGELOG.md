@@ -6,14 +6,29 @@ All notable changes to CPOS are documented here. Components are versioned indepe
 | --- | --- | --- |
 | Terminal app | 0.2.2 | `Cargo.toml` |
 | VS Code extension | 0.5.2 | `extensions/vscode/package.json` |
-| Browser companion (Chrome) | 0.15.2 | `extensions/chrome/manifest.json` |
-| Browser companion (Firefox) | 0.15.2 | `extensions/firefox/manifest.json` |
+| Browser companion (Chrome) | 0.15.3 | `extensions/chrome/manifest.json` |
+| Browser companion (Firefox) | 0.15.3 | `extensions/firefox/manifest.json` |
 
 Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
 ## Unreleased
+
+## Browser companions 0.15.3 — 2026-06-29
+
+### Added
+- **Challenge alerts you can't miss.** An in-page card now appears when a friend challenges you — accept or decline it in place — and when your own challenge is accepted, complementing the system notification. The on-problem challenge icon shows a live "race in progress" state, including races you have accepted rather than created.
+- **In-browser editor run controls.** Run now toggles to Stop for cancellable sample runs, with keyboard shortcuts to run (`Ctrl`/`Cmd`+`Enter`) and submit (`Ctrl`/`Cmd`+`Shift`+`Enter`), a one-click copyable result summary, and jump-to-first-failure.
+
+### Changed
+- **Redesigned run results.** The in-browser editor's results console is now a dismissible panel — collapse it, close it, or drag to resize — with an animated pass-ratio meter, per-test cards that fold accepted tests and expand failures, a single banner for compilation errors, and considered loading and empty states.
+- **Extension-wide visual refresh.** A unified design system gives every surface consistent corner radii, theme-aware elevation, and a disciplined accent, including a real default accent that is no longer indistinguishable from the muted text colour. Status and rating chips are tinted by meaning and Codeforces tier, pen and marker colours derive from the active theme, controls share one crisp SVG icon family, and upcoming-contest countdowns tick live with proximity-based urgency colours.
+
+### Fixed
+- **The editor's run-results panel could not be dismissed.** After running samples the results stayed pinned to the screen with no way to close or minimise them; the panel is now fully dismissible and the layered `Esc` key backs out one step at a time.
+- **Challenge events surfaced nothing on the page.** Incoming and accepted challenges previously produced only an easily-missed system notification and never an in-page prompt; both now appear on the page — and on the next page load if no Codeforces tab was open when the event arrived — deduplicated across open tabs. A late acceptance arriving just after the short invite window is no longer dropped.
+- **Hardened challenge link handling.** Problem URLs carried inside relay-delivered invites are now validated against Codeforces, so a crafted invite cannot inject a non-Codeforces link.
 
 ## CPOS 0.2.2 / VS Code 0.5.2 / Browser companions 0.15.2 — 2026-06-26
 

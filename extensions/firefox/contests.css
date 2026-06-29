@@ -4,18 +4,30 @@
 #cpos-contests-section { display: flex; flex-direction: column; gap: 6px; }
 
 #cpos-contests-section .cc-head {
-  display: flex; align-items: center; justify-content: space-between;
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;
   padding: 2px 4px;
 }
+#cpos-contests-section .cc-titles { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 #cpos-contests-section .cc-title {
   font-size: 10px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--dim);
 }
+#cpos-contests-section .cc-scope {
+  font-size: 11px; color: var(--dim); font-family: var(--font-mono, monospace);
+}
 #cpos-contests-section .cc-refresh {
+  display: inline-flex; align-items: center; justify-content: center;
   background: transparent; border: 1px solid var(--border); color: var(--dim);
-  border-radius: 6px; width: 22px; height: 22px; cursor: pointer; font-size: 13px;
-  line-height: 1; padding: 0;
+  border-radius: var(--radius-sm, 8px); width: 24px; height: 24px; cursor: pointer;
+  line-height: 0; padding: 0; flex: 0 0 auto;
 }
 #cpos-contests-section .cc-refresh:hover { color: var(--accent); border-color: var(--accent-dim); }
+#cpos-contests-section .cc-refresh svg { display: block; }
+
+/* Spin while a refresh is in flight (motion-gated). */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes cpos-spin { to { transform: rotate(360deg); } }
+  #cpos-contests-section .cc-refresh.is-busy svg { animation: cpos-spin 0.8s linear infinite; }
+}
 
 #cpos-contests-section .cc-lead {
   display: flex; align-items: center; gap: 8px;
@@ -29,7 +41,26 @@
 #cpos-contests-section .cc-select:focus { outline: none; border-color: var(--accent-dim); }
 
 #cpos-contests-section .cc-empty {
-  color: var(--dim); font-size: 11.5px; padding: 10px 6px; text-align: center;
+  color: var(--dim); font-size: 11.5px; line-height: 1.4; padding: 10px 6px; text-align: center;
+}
+
+/* Distinct loading treatment: ghost skeleton rows, not the empty message. */
+#cpos-contests-section .cc-skeleton { display: flex; flex-direction: column; gap: 4px; }
+#cpos-contests-section .cc-skel-row {
+  display: flex; align-items: center; gap: 10px;
+  border: 1px solid var(--border); border-radius: var(--radius-sm, 8px); padding: 7px 8px;
+}
+#cpos-contests-section .cc-skel-lines { display: flex; flex-direction: column; gap: 6px; flex: 1 1 auto; min-width: 0; }
+#cpos-contests-section .cc-skel-bar {
+  display: block; border-radius: var(--radius-pill, 999px);
+  background: color-mix(in srgb, var(--fg) 12%, transparent);
+}
+#cpos-contests-section .cc-skel-name { height: 9px; width: 70%; }
+#cpos-contests-section .cc-skel-meta { height: 8px; width: 45%; }
+#cpos-contests-section .cc-skel-sw { height: 18px; width: 34px; border-radius: var(--radius-pill, 999px); flex: 0 0 auto; }
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes cpos-pulse { 50% { opacity: 0.45; } }
+  #cpos-contests-section .cc-skel-bar { animation: cpos-pulse 1.3s ease-in-out infinite; }
 }
 
 #cpos-contests-section .cc-list { display: flex; flex-direction: column; gap: 4px; }
@@ -41,12 +72,25 @@
 
 #cpos-contests-section .cc-info { display: flex; flex-direction: column; flex: 1 1 auto; min-width: 0; gap: 2px; }
 #cpos-contests-section .cc-name {
-  font-weight: 600; font-size: 12.5px; color: var(--fg);
+  font-weight: 650; font-size: 12.5px; color: var(--fg);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-#cpos-contests-section .cc-meta { display: flex; gap: 8px; font-size: 10.5px; }
+#cpos-contests-section .cc-meta { display: flex; align-items: center; gap: 8px; font-size: 10.5px; }
 #cpos-contests-section .cc-when { color: var(--dim); }
-#cpos-contests-section .cc-cd { color: var(--accent); }
+
+/* Countdown color-graded by proximity. --accent is reserved (not used here). */
+#cpos-contests-section .cc-cd { font-variant-numeric: tabular-nums; }
+#cpos-contests-section .cc-cd.is-soon { color: var(--bad); font-weight: 600; }
+#cpos-contests-section .cc-cd.is-near { color: var(--warn); }
+#cpos-contests-section .cc-cd.is-far { color: var(--dim); }
+
+/* Quiet duration meta chip (neutral, not a meaning chip). */
+#cpos-contests-section .cc-dur {
+  color: var(--dim); font-family: var(--font-mono, monospace); font-size: 9.5px;
+  padding: 1px 6px; border-radius: var(--radius-pill, 999px);
+  border: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+  background: color-mix(in srgb, var(--fg) 5%, transparent);
+}
 
 /* iOS-style switch, mirrors popup .sw */
 #cpos-contests-section .cc-sw { position: relative; width: 36px; height: 20px; flex: 0 0 auto; }
@@ -59,5 +103,14 @@
   content: ""; position: absolute; width: 14px; height: 14px; left: 2px; top: 2px;
   border-radius: 50%; background: var(--dim); transition: 0.15s;
 }
-#cpos-contests-section .cc-sw input:checked + span { background: var(--accent-dim); border-color: var(--accent-dim); }
+#cpos-contests-section .cc-sw input:checked + span { background: var(--accent); border-color: var(--accent); }
 #cpos-contests-section .cc-sw input:checked + span::after { transform: translateX(16px); background: var(--accent-on); }
+
+/* Keyboard focus rings. */
+#cpos-contests-section .cc-refresh:focus-visible,
+#cpos-contests-section .cc-select:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px;
+}
+#cpos-contests-section .cc-sw input:focus-visible + span {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent);
+}

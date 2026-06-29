@@ -154,14 +154,14 @@
   }
 
   async function checkConnection() {
-    const dot = document.getElementById("connDot");
-    const text = document.getElementById("connText");
-    if (!dot || !text) return; // connection indicator removed from the header
+    const pill = document.getElementById("syncPill");
+    const text = document.getElementById("syncText");
+    if (!pill || !text) return;
     for (const base of ENDPOINTS) {
       try {
         const res = await fetch(`${base}/pending-submit`, { cache: "no-store" });
         if (res.ok) {
-          dot.className = "dot on";
+          pill.classList.add("on");
           text.textContent = base.includes("27122") ? "VS Code" : "TUI";
           return;
         }
@@ -169,8 +169,8 @@
         /* try next */
       }
     }
-    dot.className = "dot off";
-    text.textContent = "offline";
+    pill.classList.remove("on");
+    text.textContent = "Offline";
   }
 
   async function fetchSharedConfig() {
@@ -315,9 +315,10 @@
       const url = tabs[0]?.url || "";
       const hint = document.getElementById("siteHint");
       if (!hint) return;
-      if (url.includes("codeforces.com")) hint.textContent = "· on Codeforces";
-      else if (url.includes("cses.fi")) hint.textContent = "· on CSES";
-      else hint.textContent = "· open CF/CSES to use";
+      if (url.includes("codeforces.com")) hint.textContent = "Active tab: Codeforces · changes apply live";
+      else if (url.includes("cses.fi")) hint.textContent = "Active tab: CSES · changes apply live";
+      else if (url.includes("atcoder.jp")) hint.textContent = "Active tab: AtCoder · changes apply live";
+      else hint.textContent = "Open Codeforces, CSES, or AtCoder to use these";
     });
   }
 

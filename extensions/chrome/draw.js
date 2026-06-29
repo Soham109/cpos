@@ -22,17 +22,22 @@
   const STORE_PREFIX = "cpos.draw.page.";
   const UI_STORE_KEY = "cpos.draw.ui";
 
-  // Ink colours — flat, few, matching the marker/notes palette. Pen draws them
-  // solid; the marker draws them translucent (alpha from TOOLS, applied once at
-  // stroke time so overlapping marker segments don't compound).
+  // Ink colours — flat, few, derived from the active theme so the default ink is
+  // always legible (never near-black on a dark page) and the set tracks whatever
+  // palette is on. Each slot names a theme token; the concrete hex is resolved
+  // from the theme object at render/stroke time. The text marker (annotate.js)
+  // uses these SAME five tokens, just translucent.
   const COLORS = [
-    { id: "ink", stroke: "#1b1b2b" }, // near-black ink
-    { id: "r", stroke: "#ff5d6c" },   // red
-    { id: "b", stroke: "#4d8dff" },   // blue
-    { id: "g", stroke: "#33b86b" },   // green
-    { id: "y", stroke: "#f0b429" }    // amber
+    { id: "ink", token: "--fg" },  // default ink — the readable foreground colour
+    { id: "r", token: "--bad" },   // red
+    { id: "b", token: "--cf" },    // blue
+    { id: "g", token: "--ok" },    // green
+    { id: "y", token: "--warn" }   // amber
   ];
   const colorById = (id) => COLORS.find((c) => c.id === id) || COLORS[0];
+  // Resolve a colour slot to a concrete hex from the active theme; fall back to a
+  // mid-grey if the theme isn't loaded yet so a swatch is never invisible.
+  const colorHex = (c) => (theme && theme[c.token]) || "#8a86a3";
 
   // Freehand pen nib. The "Marker" tool isn't a canvas nib — it highlights
   // selected page text through the annotate engine (self.CPOS_ANNOTATE).
@@ -172,7 +177,7 @@
     ctx.lineJoin = "round";
     ctx.lineCap = "round";
     ctx.globalAlpha = t.alpha;
-    ctx.strokeStyle = colorById(s.color).stroke;
+    ctx.strokeStyle = colorHex(colorById(s.color));
     ctx.lineWidth = s.size || t.width;
     ctx.beginPath();
     ctx.moveTo(s.points[0][0], s.points[0][1]);
@@ -410,7 +415,7 @@
       sw.title = "Ink colour";
       // !important so the fill survives the page-wide `button { background … }`
       // that Modernize / site themes inject (see draw.css shield).
-      sw.style.setProperty("background-color", c.stroke, "important");
+      sw.style.setProperty("background-color", colorHex(c), "important");
       sw.setAttribute("aria-pressed", c.id === activeColor ? "true" : "false");
       sw.addEventListener("click", () => {
         activeColor = c.id;
@@ -437,7 +442,7 @@
       sw.type = "button";
       sw.className = "cpos-dr-swatch";
       sw.title = "Highlight selected text";
-      sw.style.setProperty("background-color", c.fill, "important");
+      sw.style.setProperty("background-color", AN.colorFill(c), "important");
       sw.setAttribute("aria-pressed", c.id === AN.getActiveColor() ? "true" : "false");
       sw.addEventListener("click", () => {
         AN.setActiveColor(c.id); // just sets the colour — selecting text auto-applies it
@@ -578,6 +583,10 @@
     bar.style.setProperty("--cpos-dr-border", theme["--border"]);
     bar.style.setProperty("--cpos-dr-accent", theme["--accent"]);
     bar.style.setProperty("--cpos-dr-bad", theme["--bad"]);
+    // The ink palette is theme-derived, so a theme switch must repaint strokes
+    // and re-render the swatches with their new concrete hex.
+    redraw();
+    renderBar();
   }
 
   // ---- resize -------------------------------------------------------------

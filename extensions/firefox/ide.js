@@ -71,6 +71,7 @@
   const codeKey = () => "cpos.ide.code." + problemKey();
   const FONT_KEY = "cpos.ide.fontSize";
   const WRAP_KEY = "cpos.ide.wrap";
+  const CONSOLE_H_KEY = "cpos.ide.consoleH";
   const TEMPLATES_KEY = "cpos.templates";
   const TEMPLATE_DIRTY_KEY = "cpos.templates.dirty";
 
@@ -503,13 +504,15 @@
   }
 
   // ---- panel --------------------------------------------------------------
-  let panel, editor, msgEl, launch, consoleEl, statusEl, findBar, customWrap;
+  let panel, editor, msgEl, launch, consoleEl, conBodyEl, statusEl, findBar, customWrap;
   let lastRunData = null;
+  // Set while a run is in flight; used to cancel runs and gate re-entrancy.
+  let runController = null;
 
   async function buildPanel() {
     if (document.getElementById("cpos-ide-panel")) return;
     await syncTemplatesFromRunner();
-    const conf = await sget([codeKey(), "cpos.ide.lang", "cpos.ide.theme", "cpos.ide.width", FONT_KEY, WRAP_KEY, TEMPLATES_KEY]);
+    const conf = await sget([codeKey(), "cpos.ide.lang", "cpos.ide.theme", "cpos.ide.width", FONT_KEY, WRAP_KEY, CONSOLE_H_KEY, TEMPLATES_KEY]);
     const lang = conf["cpos.ide.lang"] || "cpp";
     const templates = conf[TEMPLATES_KEY] || {};
     chrome.storage.onChanged.addListener((changes, area) => {
@@ -524,7 +527,7 @@
 
     launch = document.createElement("button");
     launch.id = "cpos-ide-launch";
-    launch.textContent = "‹ /› EDITOR";
+    launch.innerHTML = '<span class="lglyph">&lt;/&gt;</span><span class="lword">EDITOR</span>';
     launch.title = "CPOS in-browser editor";
     document.body.appendChild(launch);
 
@@ -556,15 +559,25 @@
         '<button id="cpos-find-x" title="Close (Esc)">✕</button>' +
       "</div>" +
       '<div class="cpos-ide-editor"><div class="cpos-ide-mount" id="cpos-ide-mount"></div></div>' +
-      '<div class="cpos-ide-console" id="cpos-ide-console" hidden></div>' +
+      '<div class="cpos-ide-console" id="cpos-ide-console" hidden role="region" aria-label="Run results">' +
+        '<div class="cpos-con-grip" title="Drag to resize results"></div>' +
+        '<div class="cpos-con-bar">' +
+          '<span class="cpos-con-label" id="cpos-con-label" aria-live="polite">Results</span>' +
+          '<span class="grow"></span>' +
+          '<button class="cic" id="cpos-con-jump" title="Jump to first failure" aria-label="Jump to first failure" hidden>↧</button>' +
+          '<button class="cic" id="cpos-con-collapse" title="Collapse results" aria-label="Collapse results">▾</button>' +
+          '<button class="cic" id="cpos-con-close" title="Close results (Esc)" aria-label="Close results">✕</button>' +
+        "</div>" +
+        '<div class="cpos-con-body" id="cpos-ide-console-body"></div>' +
+      "</div>" +
       '<div class="cpos-ide-status"><span id="cpos-ide-pos">Ln 1, Col 1</span><span class="grow"></span><span id="cpos-ide-langtag">' + lang + "</span></div>" +
       '<div class="cpos-ide-foot">' +
         '<span class="msg"></span>' +
         '<button id="cpos-ide-custom" title="Toggle a custom stdin test">Custom</button>' +
         '<button id="cpos-ide-reset" title="Reset to starter template">Reset</button>' +
         '<button id="cpos-ide-copy">Copy</button>' +
-        '<button id="cpos-ide-run" title="Run against sample tests">▷ Run</button>' +
-        '<button class="primary" id="cpos-ide-submit">Submit ▸</button>' +
+        '<button id="cpos-ide-run" title="Run against sample tests (Ctrl/Cmd+Enter)">▷ Run</button>' +
+        '<button class="primary" id="cpos-ide-submit" title="Submit (Ctrl/Cmd+Shift+Enter)">Submit ▸</button>' +
       "</div>";
     document.body.appendChild(panel);
 
@@ -581,9 +594,14 @@
 
     msgEl = panel.querySelector(".msg");
     consoleEl = panel.querySelector("#cpos-ide-console");
+    conBodyEl = panel.querySelector("#cpos-ide-console-body");
     statusEl = panel.querySelector("#cpos-ide-pos");
     findBar = panel.querySelector("#cpos-ide-findbar");
     const langTag = panel.querySelector("#cpos-ide-langtag");
+
+    // Restore the persisted console height, re-clamped to the current viewport.
+    const savedConH = conf[CONSOLE_H_KEY];
+    if (savedConH) conBodyEl.style.maxHeight = Math.max(120, Math.min(savedConH, Math.round(window.innerHeight * 0.7))) + "px";
 
     const initial = conf[codeKey()] != null ? conf[codeKey()] : (templates[lang] || STARTERS[lang] || "");
     let saveTimer = null;
@@ -620,6 +638,10 @@
     panel.querySelector("#cpos-ide-run").onclick = runSamples;
     panel.querySelector("#cpos-ide-submit").onclick = submit;
     panel.querySelector("#cpos-ide-custom").onclick = toggleCustom;
+    panel.querySelector("#cpos-con-collapse").onclick = collapseConsole;
+    panel.querySelector("#cpos-con-close").onclick = closeConsole;
+    panel.querySelector("#cpos-con-jump").onclick = () => jumpToFailure(true);
+    setupConsoleResize(panel.querySelector(".cpos-con-grip"));
 
     // Font size controls.
     async function setFont(px) { curFont = Math.max(10, Math.min(px, 24)); editor.setFontSize(curFont); await sset({ [FONT_KEY]: curFont }); setMsg("Font " + curFont + "px"); }
@@ -645,13 +667,34 @@
     // Find & replace wiring.
     setupFind();
 
-    // Keyboard: Ctrl/Cmd+F opens find inside the editor; Esc closes it/zen.
+    // Run/submit shortcuts on capture phase. CodeMirror's defaultKeymap binds
+    // Mod-Enter -> insertBlankLine, so a normal bubble listener would fire AFTER
+    // CM and we'd both run AND insert a line. Capturing + stopPropagation wins.
     panel.addEventListener("keydown", (e) => {
-      if ((e.ctrlKey || e.metaKey) && (e.key === "f" || e.key === "F")) { e.preventDefault(); openFind(); }
-      else if (e.key === "Escape") {
-        if (!findBar.hidden) { closeFind(); }
-        else if (panel.classList.contains("zen")) { panel.classList.remove("zen"); panel.querySelector("#cpos-ide-zen").classList.remove("active"); if (panel.classList.contains("open")) pushPage(parseInt(panel.style.width, 10) || width); }
+      if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+        const t = e.target;
+        if (t && t.closest && t.closest(".cpos-ide-find")) return; // leave the find box alone
+        e.preventDefault(); e.stopPropagation();
+        if (e.shiftKey) submit();
+        else if (runController) cancelRun();
+        else if (t && t.closest && t.closest(".cpos-con-custom")) runCustom(); // run the custom stdin you're editing
+        else runSamples();
+      } else if ((e.ctrlKey || e.metaKey) && (e.key === "s" || e.key === "S")) {
+        // Code already autosaves; just swallow the browser Save dialog.
+        e.preventDefault(); e.stopPropagation(); setMsg("Saved.");
       }
+    }, true);
+
+    // Keyboard: Ctrl/Cmd+F opens find; Esc backs out one layer at a time:
+    // find -> running run -> expanded console -> collapsed console -> zen.
+    panel.addEventListener("keydown", (e) => {
+      if ((e.ctrlKey || e.metaKey) && (e.key === "f" || e.key === "F")) { e.preventDefault(); openFind(); return; }
+      if (e.key !== "Escape") return;
+      if (!findBar.hidden) { closeFind(); }
+      else if (runController) { cancelRun(); }
+      else if (!consoleEl.hidden && !consoleEl.classList.contains("collapsed")) { collapseConsole(); }
+      else if (!consoleEl.hidden) { closeConsole(); }
+      else if (panel.classList.contains("zen")) { panel.classList.remove("zen"); panel.querySelector("#cpos-ide-zen").classList.remove("active"); if (panel.classList.contains("open")) pushPage(parseInt(panel.style.width, 10) || width); }
     });
 
     setupResize(panel.querySelector(".cpos-ide-grip"));
@@ -715,11 +758,11 @@
     q.addEventListener("input", () => { findIdx = -1; refreshFind(); if (findMatches.length) gotoMatch(1); });
     q.addEventListener("keydown", (e) => {
       if (e.key === "Enter") { e.preventDefault(); gotoMatch(e.shiftKey ? -1 : 1); }
-      else if (e.key === "Escape") { e.preventDefault(); closeFind(); }
+      else if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); closeFind(); }
     });
     r.addEventListener("keydown", (e) => {
       if (e.key === "Enter") { e.preventDefault(); replaceCurrent(); }
-      else if (e.key === "Escape") { e.preventDefault(); closeFind(); }
+      else if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); closeFind(); }
     });
   }
   function replaceCurrent() {
@@ -785,10 +828,90 @@
     });
   }
 
+  // ---- console state: open / collapse / close -----------------------------
+  function setConLabel(text) {
+    const el = panel && panel.querySelector("#cpos-con-label");
+    if (el) el.textContent = text;
+  }
+  function setCollapseGlyph(collapsed) {
+    const c = panel && panel.querySelector("#cpos-con-collapse");
+    if (!c) return;
+    c.textContent = collapsed ? "▸" : "▾";
+    c.title = collapsed ? "Expand results" : "Collapse results";
+    c.setAttribute("aria-label", collapsed ? "Expand results" : "Collapse results");
+  }
+  function openConsole() {
+    consoleEl.hidden = false;
+    consoleEl.classList.remove("collapsed");
+    setCollapseGlyph(false);
+  }
+  function collapseConsole() {
+    const collapsed = consoleEl.classList.toggle("collapsed");
+    setCollapseGlyph(collapsed);
+  }
+  function closeConsole() {
+    if (runController) cancelRun();
+    consoleEl.hidden = true;
+    consoleEl.classList.remove("collapsed");
+    conBodyEl.innerHTML = "";
+    customWrap = null;
+    setRunning(false);
+    if (editor) editor.focus();
+  }
+
+  // ---- run state: spinner / cancel ----------------------------------------
+  function setRunning(on, n) {
+    if (consoleEl) {
+      consoleEl.classList.toggle("running", !!on);
+      consoleEl.setAttribute("aria-busy", on ? "true" : "false");
+    }
+    const btn = panel && panel.querySelector("#cpos-ide-run");
+    if (!btn) return;
+    btn.classList.toggle("running", !!on);
+    btn.textContent = on ? "◼ Stop" : "▷ Run";
+    btn.title = on ? "Cancel the running tests (Esc)" : "Run against sample tests (Ctrl/Cmd+Enter)";
+    if (on && n != null) setConLabel("Running " + n + " sample" + (n === 1 ? "" : "s") + "…");
+  }
+  function cancelRun() {
+    if (runController) { try { runController.abort(); } catch (_) { /* noop */ } }
+  }
+  function loadingHtml(n) {
+    return '<div class="cpos-con-loading">' +
+      '<div class="smeter indeterminate"><i></i></div>' +
+      "<span>Compiling &amp; running " + n + " sample" + (n === 1 ? "" : "s") + " locally…</span>" +
+      "</div>";
+  }
+
+  function setupConsoleResize(grip) {
+    let dragging = false, startY = 0, startH = 0;
+    grip.addEventListener("mousedown", (e) => {
+      dragging = true; e.preventDefault();
+      startY = e.clientY;
+      startH = conBodyEl.getBoundingClientRect().height;
+      conBodyEl.style.transition = "none";
+      document.body.style.userSelect = "none";
+    });
+    window.addEventListener("mousemove", (e) => {
+      if (!dragging) return;
+      const h = Math.max(120, Math.min(startH + (startY - e.clientY), Math.round(window.innerHeight * 0.7)));
+      conBodyEl.style.maxHeight = h + "px";
+    });
+    window.addEventListener("mouseup", () => {
+      if (!dragging) return;
+      dragging = false;
+      conBodyEl.style.transition = "";
+      document.body.style.userSelect = "";
+      const h = parseInt(conBodyEl.style.maxHeight, 10);
+      if (h) sset({ [CONSOLE_H_KEY]: h });
+    });
+    grip.addEventListener("dblclick", () => { conBodyEl.style.maxHeight = ""; sdel(CONSOLE_H_KEY); });
+  }
+
   // ---- custom stdin test --------------------------------------------------
   function toggleCustom() {
     if (customWrap && customWrap.isConnected) { customWrap.remove(); customWrap = null; return; }
-    consoleEl.hidden = false;
+    openConsole();
+    setConLabel("Custom test");
     customWrap = document.createElement("div");
     customWrap.className = "cpos-con-custom";
     customWrap.innerHTML =
@@ -799,20 +922,28 @@
       '<label>stdin</label><textarea id="cpos-custom-in" spellcheck="false" placeholder="Type input here…"></textarea>' +
       '<label>expected (optional)</label><textarea id="cpos-custom-exp" spellcheck="false" placeholder="Leave blank to just see output"></textarea>' +
       '<div id="cpos-custom-out"></div>';
-    consoleEl.prepend(customWrap);
+    conBodyEl.prepend(customWrap);
     customWrap.querySelector("#cpos-custom-run").onclick = runCustom;
     customWrap.querySelector("#cpos-custom-in").focus();
   }
 
   async function runCustom() {
+    if (runController) { cancelRun(); return; }
     const input = customWrap.querySelector("#cpos-custom-in").value;
     const expRaw = customWrap.querySelector("#cpos-custom-exp").value;
     const expected = expRaw.trim();
     const out = customWrap.querySelector("#cpos-custom-out");
-    out.innerHTML = '<div class="cpos-con-empty">Running on your local CPOS runner…</div>';
+    out.innerHTML = loadingHtml(1);
     const test = { input };
     if (expected) test.expected = expected;
-    const data = await callRunner([test]);
+    setRunning(true, 1);
+    let data;
+    try { data = await callRunner([test]); }
+    finally { setRunning(false); }
+    // The custom panel may have been removed (console closed / panel torn down)
+    // while the fetch was in flight — out would be detached; don't write to it.
+    if (!out.isConnected) return;
+    if (data === "aborted") { out.innerHTML = '<div class="cpos-con-empty">Run cancelled.</div>'; return; }
     if (data === null) { out.innerHTML = runnerDownHtml(); return; }
     const r = (data.results || [])[0] || {};
     out.innerHTML = renderTestCard(r, 0, { custom: true, hasExpected: !!expected });
@@ -820,15 +951,15 @@
 
   // ---- run against samples via the local CPOS runner ----------------------
   function showConsole(html) {
-    consoleEl.hidden = false;
+    openConsole();
     // Preserve a mounted custom-test panel above the results.
     if (customWrap && customWrap.isConnected) {
-      [...consoleEl.children].forEach((c) => { if (c !== customWrap) c.remove(); });
+      [...conBodyEl.children].forEach((c) => { if (c !== customWrap) c.remove(); });
       const holder = document.createElement("div");
       holder.innerHTML = html;
-      consoleEl.append(...holder.childNodes);
+      conBodyEl.append(...holder.childNodes);
     } else {
-      consoleEl.innerHTML = html;
+      conBodyEl.innerHTML = html;
     }
   }
   const esc = (s) => String(s == null ? "" : s).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c]));
@@ -851,23 +982,44 @@
   async function callRunner(tests) {
     const payload = { code: editor.getValue(), language: panel.querySelector("#cpos-ide-lang").value, tests };
     runnerStale = false;
-    for (const base of RUNNERS) {
-      try {
-        const res = await fetch(base + "/run", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-        if (res.ok) return await res.json();
-        // Reached a CPOS server, but it doesn't serve /run (older version).
-        runnerStale = true;
-      } catch { /* connection refused — try the next port */ }
+    runController = new AbortController();
+    const signal = runController.signal;
+    try {
+      for (const base of RUNNERS) {
+        if (signal.aborted) return "aborted";
+        try {
+          const res = await fetch(base + "/run", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload), signal });
+          if (res.ok) return await res.json();
+          // Reached a CPOS server, but it doesn't serve /run (older version).
+          runnerStale = true;
+        } catch (e) {
+          if (e && e.name === "AbortError") return "aborted";
+          /* connection refused — try the next port */
+        }
+      }
+      return null;
+    } finally {
+      runController = null;
     }
-    return null;
   }
 
   async function runSamples() {
+    if (runController) { cancelRun(); return; }
     const tests = scrapeSamples();
-    if (!tests.length) { showConsole('<div class="cpos-con-empty">No sample tests found on this page.</div>'); return; }
-    showConsole('<div class="cpos-con-empty">Running ' + tests.length + " sample(s) on your local CPOS runner…</div>");
-    const data = await callRunner(tests);
-    if (data === null) { showConsole(runnerDownHtml()); return; }
+    if (!tests.length) { showConsole('<div class="cpos-con-empty">No sample tests found on this page.</div>'); setConLabel("No samples"); return; }
+    showConsole(loadingHtml(tests.length));
+    setRunning(true, tests.length);
+    let data;
+    try { data = await callRunner(tests); }
+    finally { setRunning(false); }
+    if (data === "aborted") {
+      if (consoleEl && !consoleEl.hidden) { showConsole('<div class="cpos-con-empty">Run cancelled.</div>'); setConLabel("Cancelled"); }
+      return;
+    }
+    // The panel may have been closed (consoleEl.hidden) or torn down (null) while
+    // the fetch was in flight — never resurrect a dismissed/destroyed console.
+    if (!consoleEl || consoleEl.hidden) return;
+    if (data === null) { showConsole(runnerDownHtml()); setConLabel("Runner offline"); return; }
     renderRunResults(data, tests);
   }
 
@@ -937,28 +1089,98 @@
     }
     if (r.stderr) body += '<div class="cpos-con-io"><label>stderr</label><pre>' + esc(r.stderr) + "</pre></div>";
     if (opts.input != null) body = '<div class="cpos-con-io"><label>input</label><pre>' + esc(opts.input) + "</pre></div>" + body;
+    // AC samples collapse to a quiet one-line summary; failures (and custom
+    // runs) open so the diff/output is on screen with no extra clicks.
+    const open = cls !== "ok" || !!opts.custom;
+    const m = meta(r).replace(/^ · /, "");
+    const inner = body ? '<div class="cpos-con-cardbody">' + body + "</div>" : "";
     return (
-      '<div class="cpos-con-test ' + cls + '">' +
-        '<div class="cpos-con-head"><b>' + esc(title) + '</b><span class="vd">' + esc(v) + meta(r) + "</span></div>" +
-        body +
-      "</div>"
+      '<details class="cpos-con-test ' + cls + '"' + (open ? " open" : "") + ">" +
+        '<summary class="cpos-con-head"><b>' + esc(title) + '</b><span class="grow"></span>' +
+          '<span class="vd vp">' + esc(v) + "</span>" + (m ? '<span class="vm">' + m + "</span>" : "") +
+        "</summary>" +
+        inner +
+      "</details>"
     );
   }
 
   function renderRunResults(data, tests) {
     lastRunData = data;
     const results = (data && data.results) || [];
-    if (!results.length) { showConsole('<div class="cpos-con-empty">Runner returned no results.</div>'); return; }
+    if (!results.length) { showConsole('<div class="cpos-con-empty">Runner returned no results.</div>'); setConLabel("No results"); return; }
+
+    // Compile error: the runner copies the same message into every test. Show
+    // it once as a banner instead of N identical failing cards.
+    if (results.length > 1 && results.every((r) => verdictOf(r) === "CE")) {
+      const msg = results[0].actual || results[0].stderr || results[0].error || "Compilation error.";
+      showConsole(
+        '<div class="cpos-con-summary bad"><div class="sline"><span class="sv">✗ Compilation error</span></div></div>' +
+        '<div class="cpos-con-ce">' + esc(msg) + "</div>"
+      );
+      setConLabel("Compilation error");
+      updateJumpVisibility();
+      return;
+    }
+
     const cards = results.map((r, i) => renderTestCard(r, i, { input: tests && tests[i] ? tests[i].input : null, hasExpected: true })).join("");
     const passed = results.filter((r) => verdictClass(verdictOf(r)) === "ok").length;
     const allOk = passed === results.length;
+    const pct = Math.round((passed / results.length) * 100);
+    const verdictText = allOk ? "Accepted" : passed + " of " + results.length + " passed";
     const summary =
       '<div class="cpos-con-summary ' + (allOk ? "ok" : "bad") + '">' +
-        '<span class="sv">' + (allOk ? "✓ Accepted" : "✗ " + (results.length - passed) + " failing") + "</span>" +
-        '<span class="grow"></span>' +
-        '<span class="sc">' + passed + " / " + results.length + " passed</span>" +
+        '<div class="sline">' +
+          '<span class="sv">' + (allOk ? "✓ Accepted" : "✗ " + verdictText) + "</span>" +
+          '<span class="grow"></span>' +
+          '<button class="cpos-con-copy" id="cpos-con-copy" title="Copy a result summary to the clipboard">Copy result</button>' +
+          '<span class="sc">' + passed + " / " + results.length + "</span>" +
+        "</div>" +
+        '<div class="smeter"><i style="width:0"></i></div>' +
       "</div>";
     showConsole(summary + cards);
+    setConLabel(verdictText);
+    // Animate the pass-ratio meter on the next frame (instant under reduced-motion).
+    const meter = conBodyEl.querySelector(".cpos-con-summary .smeter i");
+    if (meter) requestAnimationFrame(() => { meter.style.width = pct + "%"; });
+    const copyBtn = conBodyEl.querySelector("#cpos-con-copy");
+    if (copyBtn) copyBtn.onclick = () => copyResult(results, passed, tests);
+    updateJumpVisibility();
+    jumpToFailure(false);
+  }
+
+  function updateJumpVisibility() {
+    const jump = panel && panel.querySelector("#cpos-con-jump");
+    if (!jump || !conBodyEl) return;
+    jump.hidden = !conBodyEl.querySelector(".cpos-con-test:not(.ok)");
+  }
+  function jumpToFailure(flash) {
+    if (!conBodyEl) return;
+    const el = conBodyEl.querySelector(".cpos-con-test:not(.ok)");
+    if (!el) return;
+    if (el.tagName === "DETAILS") el.open = true;
+    el.scrollIntoView({ block: "nearest" });
+    if (flash) {
+      el.classList.remove("flash");
+      void el.offsetWidth; // reflow so the animation restarts
+      el.classList.add("flash");
+    }
+  }
+
+  async function copyResult(results, passed, tests) {
+    const lang = panel.querySelector("#cpos-ide-lang").value;
+    const lines = [problemLabel() + " — " + lang, passed + "/" + results.length + " passed"];
+    const firstFail = results.findIndex((r) => verdictClass(verdictOf(r)) !== "ok");
+    if (firstFail !== -1) {
+      const r = results[firstFail];
+      const got = r.actual != null ? r.actual : (r.stdout != null ? r.stdout : (r.output != null ? r.output : ""));
+      lines.push("", "First failure — Test " + (firstFail + 1) + " (" + verdictOf(r) + ")");
+      const input = tests && tests[firstFail] ? tests[firstFail].input : null;
+      if (input != null) lines.push("input:", String(input));
+      lines.push("got:", String(got));
+      if (r.expected != null && r.expected !== "") lines.push("expected:", String(r.expected));
+    }
+    try { await navigator.clipboard.writeText(lines.join("\n")); setMsg("Result copied."); }
+    catch { setMsg("Copy failed."); }
   }
 
   // ---- submit (reuses existing background injector) -----------------------
@@ -1002,10 +1224,11 @@
   // ---- lifecycle ----------------------------------------------------------
   function teardown() {
     pushPage(0);
+    cancelRun();
     try { editor?.destroy?.(); } catch {}
     document.getElementById("cpos-ide-panel")?.remove();
     document.getElementById("cpos-ide-launch")?.remove();
-    panel = editor = msgEl = launch = consoleEl = statusEl = findBar = customWrap = null;
+    panel = editor = msgEl = launch = consoleEl = conBodyEl = statusEl = findBar = customWrap = null;
   }
   async function sync() {
     if (!C) return;

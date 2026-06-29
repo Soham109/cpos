@@ -218,6 +218,26 @@
   // ── optional dismissible banner on the homepage only ────────────────────────
   function removeBanner() { document.getElementById(BANNER_ID)?.remove(); }
 
+  // Codeforces rating tier colour (matches CF's tiers; cool→warm with difficulty).
+  function tierColor(r) {
+    const n = Number(r);
+    if (!Number.isFinite(n)) return "var(--dim)";
+    if (n < 1200) return "#9aa0a6"; // gray
+    if (n < 1400) return "#42c267"; // green
+    if (n < 1600) return "#41b5b3"; // cyan
+    if (n < 1900) return "#7aa2f7"; // blue
+    if (n < 2100) return "#c77dff"; // violet
+    if (n < 2400) return "#f0a13e"; // orange
+    return "#ff5b5b"; // red
+  }
+  // Tinted-chip recipe shared with the rest of the popup UI.
+  function tintChip(node, token) {
+    node.style.background = "color-mix(in srgb, " + token + " 16%, transparent)";
+    node.style.color = token;
+    node.style.border = "1px solid color-mix(in srgb, " + token + " 40%, transparent)";
+    node.style.borderRadius = "var(--radius-pill, 999px)";
+  }
+
   async function applyBannerTheme(node) {
     if (!T) return;
     try { T.applyTheme(node, await (C.activePageThemeId ? C.activePageThemeId() : C.activeThemeId())); } catch (e) { /* ignore */ }
@@ -234,13 +254,26 @@
     const node = document.createElement("div");
     node.id = BANNER_ID;
     node.className = "cpos-daily-banner";
+    const hasRating = daily.rating != null && daily.rating !== "";
     node.innerHTML =
       '<span class="cpos-db-badge">CPOS</span>' +
       '<span class="cpos-db-label">Problem of the day</span>' +
       '<a class="cpos-db-link" href="' + esc(daily.url) + '" target="_blank" rel="noopener">' +
       esc(daily.name) + '</a>' +
-      '<span class="cpos-db-rating">' + esc(daily.rating) + '</span>' +
-      '<button class="cpos-db-x" title="Dismiss for today" aria-label="Dismiss">×</button>';
+      (hasRating ? '<span class="cpos-db-rating">' + esc(daily.rating) + '</span>' : '') +
+      '<button class="cpos-db-x" title="Dismiss for today" aria-label="Dismiss">' +
+      '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 5l14 14M19 5L5 19"/></svg>' +
+      '</button>';
+
+    // Deliberate-callout framing: a quiet accent rule, not a generic toast.
+    node.style.borderLeft = "3px solid var(--accent)";
+    // Spend accent as currency: soften the solid CPOS pill into a tinted chip.
+    const badge = node.querySelector(".cpos-db-badge");
+    if (badge) tintChip(badge, "var(--accent)");
+    // Tint the rating pill by Codeforces tier (cool → warm with difficulty).
+    const ratingPill = node.querySelector(".cpos-db-rating");
+    if (ratingPill) tintChip(ratingPill, tierColor(daily.rating));
+
     await applyBannerTheme(node);
     node.querySelector(".cpos-db-x").addEventListener("click", async () => {
       await set({ [K_DISMISS]: todayStr() });

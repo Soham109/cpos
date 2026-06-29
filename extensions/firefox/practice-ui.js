@@ -28,6 +28,31 @@
 
   const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
+  // CF tier color for a problem rating — same breakpoints as profile.js ratingColor().
+  function tierColor(r) {
+    const n = Number(r);
+    if (r == null || !Number.isFinite(n)) return "var(--dim)";
+    if (n < 1200) return "#9aa0a6"; // gray
+    if (n < 1400) return "#42c267"; // green
+    if (n < 1600) return "#41b5b3"; // cyan
+    if (n < 1900) return "#7aa2f7"; // blue
+    if (n < 2100) return "#c77dff"; // violet
+    if (n < 2400) return "#f0a13e"; // orange
+    return "#ff5b5b";               // red
+  }
+  // Tinted-chip inline style for a rating pill, colored by CF tier.
+  function ratingPillStyle(r) {
+    const c = tierColor(r);
+    return "color:" + c +
+      ";border-color:color-mix(in srgb," + c + " 40%,transparent)" +
+      ";background:color-mix(in srgb," + c + " 14%,transparent)";
+  }
+
+  // Inline SVG close-X glyph (matches the icon contract).
+  const ICON_X = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" ' +
+    'stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+    '<path d="M5 5l14 14M19 5L5 19"/></svg>';
+
   // ── deterministic RNG (mirrors cpos-daily.js so "pick another" matches band) ─
   function hashStr(s) {
     let h = 2166136261 >>> 0;
@@ -114,7 +139,7 @@
         '<div class="cpos-pr-daily">' +
         '<a class="cpos-pr-link" href="' + esc(daily.url) + '" target="_blank" rel="noopener">' +
         esc(daily.name || (daily.contestId + daily.index)) + '</a>' +
-        (daily.rating != null ? '<span class="cpos-pr-rating">' + esc(daily.rating) + '</span>' : '') +
+        (daily.rating != null ? '<span class="cpos-pr-rating" style="' + ratingPillStyle(daily.rating) + '">' + esc(daily.rating) + '</span>' : '') +
         '</div>' +
         '<button class="cpos-pr-btn" id="cpos-pr-another">Pick another</button></div>';
     } else {
@@ -132,7 +157,7 @@
 
     // Favorites
     html += '<div class="cpos-pr-block"><div class="cpos-pr-sub">Favorites' +
-      (favOn ? ' · ' + favs.length : '') + '</div>';
+      (favOn ? '<span class="cpos-pr-count"> · ' + favs.length + '</span>' : '') + '</div>';
     if (!favOn) {
       html += '<div class="cpos-pr-off">Favorites is off. Enable it in Tools.</div>';
     } else if (!favs.length) {
@@ -143,8 +168,8 @@
         html +=
           '<li class="cpos-pr-fav"><a class="cpos-pr-link" href="' + esc(f.url) + '" target="_blank" rel="noopener">' +
           esc(f.name || f.id) + '</a>' +
-          (f.rating != null ? '<span class="cpos-pr-rating">' + esc(f.rating) + '</span>' : '') +
-          '<button class="cpos-pr-x" data-fav="' + esc(f.id) + '" title="Remove" aria-label="Remove">×</button></li>';
+          (f.rating != null ? '<span class="cpos-pr-rating" style="' + ratingPillStyle(f.rating) + '">' + esc(f.rating) + '</span>' : '') +
+          '<button class="cpos-pr-x" data-fav="' + esc(f.id) + '" title="Remove" aria-label="Remove">' + ICON_X + '</button></li>';
       }
       html += '</ul>';
     }

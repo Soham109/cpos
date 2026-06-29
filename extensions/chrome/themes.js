@@ -80,8 +80,8 @@
       "--fg": "#1f2328",
       "--dim": "#6b7280",
       "--border": "#d5d7dc",
-      "--accent": "#6b7280",
-      "--accent-dim": "#4b5563",
+      "--accent": "#2f6df6",
+      "--accent-dim": "#1f56cf",
       "--accent-on": "#ffffff",
       "--ok": "#1a7f37",
       "--bad": "#cf222e",
@@ -108,7 +108,7 @@
     // Flat rose-tinted dark palette (no gradients), warm but high-contrast.
     rose: {
       name: "Rose",
-      "--bg": "#15101300",
+      "--bg": "#151013",
       "--panel": "#1c1418",
       "--panel-2": "#241a1f",
       "--fg": "#f0e2e6",
@@ -124,23 +124,29 @@
     }
   };
 
-  // Fix the typo'd bg above (kept 6-digit hex everywhere downstream expects it).
-  THEMES.rose["--bg"] = "#151013";
-
   // Structural token defaults — the geometry scale CPOS_STYLE_CORE applies. Kept
   // here so the palette file is the single place to tweak the look. These are
   // NOT per-theme colour keys; they're shared, flat (no gradients) and read by
   // the style core's STRUCT defaults. Exposed for reference / popup use.
+  //
+  // Two derived values reference var(--accent)/var(--fg): they resolve on the
+  // element they're written to, giving every surface a theme-aware accent tint
+  // ladder (wash < soft < dim < accent) and a soft, light-logic elevation that
+  // works on light themes (no muddy fixed-black shadows).
   const STRUCT_TOKENS = {
     "--radius-sm": "8px",
     "--radius": "12px",
     "--radius-lg": "16px",
+    "--radius-pill": "999px",
     "--space": "16px",
     "--shadow": "0 1px 2px rgba(0,0,0,0.06), 0 4px 16px rgba(0,0,0,0.04)",
+    "--shadow-float": "0 1px 2px color-mix(in srgb, var(--fg) 9%, transparent), 0 8px 24px color-mix(in srgb, var(--fg) 13%, transparent)",
+    "--accent-soft": "color-mix(in srgb, var(--accent) 16%, transparent)",
+    "--accent-wash": "color-mix(in srgb, var(--accent) 8%, transparent)",
     "--font-sans":
-      '"Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif',
+      '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif',
     "--font-mono":
-      '"JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace'
+      'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace'
   };
 
   const DEFAULT_THEME = "light";
@@ -185,7 +191,25 @@
       if (key === "name") continue;
       el.style.setProperty(key, value);
     }
+    // Also write the shared geometry/elevation/accent-ladder tokens so popup
+    // CSS can use var(--radius)/var(--font-sans)/var(--accent-soft)/etc.
+    for (const [key, value] of Object.entries(STRUCT_TOKENS)) el.style.setProperty(key, value);
   }
+
+  // Dev guard: catch palette slips (non-6-digit hex, or accent that collapses
+  // into --dim with no hierarchy — the "everything looks gray" tell).
+  (function validateThemes() {
+    try {
+      const hex = /^#[0-9a-f]{6}$/i;
+      for (const [id, t] of Object.entries(THEMES)) {
+        for (const [k, v] of Object.entries(t)) {
+          if (k === "name") continue;
+          if (!hex.test(v)) console.warn("CPOS theme " + id + ": " + k + " is not 6-digit hex (" + v + ")");
+        }
+        if (t["--accent"] && t["--accent"] === t["--dim"]) console.warn("CPOS theme " + id + ": --accent equals --dim (no hierarchy)");
+      }
+    } catch (_) { /* never block load */ }
+  })();
 
   // Preset ids only (excludes the special "custom" entry) — for swatch rows.
   const PRESETS = ["purple", "github", "amber", "mono", "light", "ocean", "rose"];

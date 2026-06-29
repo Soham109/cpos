@@ -23,7 +23,7 @@ Compete workflow uses public `ntfy.sh` topics to deliver race invitations,
 accept/decline replies, and public-race discovery; it never sends source code,
 cookies, or passwords. See [PRIVACY.md](PRIVACY.md).
 
-## Interface & features (0.15.2)
+## Interface & features (0.15.3)
 
 Click the toolbar icon for a focused **Settings / Compete** popup:
 
