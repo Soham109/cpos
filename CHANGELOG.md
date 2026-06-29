@@ -6,14 +6,22 @@ All notable changes to CPOS are documented here. Components are versioned indepe
 | --- | --- | --- |
 | Terminal app | 0.2.2 | `Cargo.toml` |
 | VS Code extension | 0.5.2 | `extensions/vscode/package.json` |
-| Browser companion (Chrome) | 0.15.3 | `extensions/chrome/manifest.json` |
-| Browser companion (Firefox) | 0.15.3 | `extensions/firefox/manifest.json` |
+| Browser companion (Chrome) | 0.15.4 | `extensions/chrome/manifest.json` |
+| Browser companion (Firefox) | 0.15.4 | `extensions/firefox/manifest.json` |
 
 Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
 ## Unreleased
+
+## Browser companions 0.15.4 — 2026-06-29
+
+### Added
+- **Richer profile analytics.** The Codeforces profile panel gains a *when-you-code* punch-card (an hour × weekday submission heatmap), a *tag-strengths* radar, a *difficulty trend* (average rating of problems solved per month), an activity-by-weekday breakdown, a problems-solved-per-month chart, and new insight facts — first-attempt accept rate, most active day, and peak coding hour.
+
+### Fixed
+- **Focus-mode toggle showed an empty button on modernized problem pages.** Its icon had collapsed to a sliver because the SVG width was not pinned; the toggle now renders a clear maximize / minimize glyph at a fixed size.
 
 ## Browser companions 0.15.3 — 2026-06-29
 

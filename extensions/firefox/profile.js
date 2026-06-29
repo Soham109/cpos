@@ -156,6 +156,66 @@
     return html;
   }
 
+  const WDAY = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+
+  // Punch-card: a 7×24 (weekday × hour) heatmap of when you submit — the rhythm
+  // CF never shows. Rows are Mon→Sun; intensity buckets by percentile of nonzero
+  // cells so a single busy hour doesn't wash everything else out.
+  function punchCard(mat, peak) {
+    const order = [1, 2, 3, 4, 5, 6, 0]; // Mon..Sun (getDay 0 = Sun)
+    const wd = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    const flat = [];
+    for (const r of order) for (let h = 0; h < 24; h++) flat.push((mat[r] && mat[r][h]) || 0);
+    const nz = flat.filter((v) => v > 0).sort((a, b) => a - b);
+    if (!nz.length) return '<div class="cpos-empty">No timed submissions yet.</div>';
+    const q = (p) => nz[Math.min(nz.length - 1, Math.floor(p * nz.length))];
+    const q1 = q(0.25), q2 = q(0.5), q3 = q(0.75);
+    const lvl = (c) => (c <= 0 ? 0 : c > q3 ? 4 : c > q2 ? 3 : c > q1 ? 2 : 1);
+    let rows = "";
+    order.forEach((r, ri) => {
+      let cells = '<span class="cpos-pc-rl">' + wd[ri] + "</span>";
+      for (let h = 0; h < 24; h++) {
+        const c = (mat[r] && mat[r][h]) || 0;
+        cells += '<span class="cpos-pc l' + lvl(c) + '" title="' + wd[ri] + " " + pad2(h) + ":00 · " + c + (c === 1 ? " submission" : " submissions") + '"></span>';
+      }
+      rows += '<div class="cpos-pc-row">' + cells + "</div>";
+    });
+    let ticks = '<span class="cpos-pc-rl"></span>';
+    for (let h = 0; h < 24; h++) ticks += '<span class="cpos-pc-tick">' + (h % 6 === 0 ? h : "") + "</span>";
+    const foot = peak && peak.peakHour >= 0
+      ? '<div class="cpos-pc-foot">Most active around <b>' + pad2(peak.peakHour) + ":00–" + pad2((peak.peakHour + 1) % 24) + ":00</b>" +
+        (peak.peakDow >= 0 ? " on <b>" + WDAY[peak.peakDow] + "s</b>" : "") + "</div>"
+      : "";
+    return '<div class="cpos-punch"><div class="cpos-pc-scroll"><div class="cpos-pc-grid">' + rows +
+      '<div class="cpos-pc-row cpos-pc-axis">' + ticks + "</div></div></div>" + foot + "</div>";
+  }
+
+  // Radar / spider chart of the top tag strengths (distinct solves per tag).
+  function radar(rows) {
+    rows = (rows || []).filter(Boolean);
+    if (rows.length < 3) return '<div class="cpos-empty">Solve a few more problems to map your tag strengths.</div>';
+    const N = rows.length;
+    const max = Math.max(...rows.map((r) => r.value), 1);
+    const cx = 100, cy = 96, R = 66;
+    const ang = (i) => -Math.PI / 2 + (i * 2 * Math.PI) / N;
+    const pt = (i, rad) => [cx + Math.cos(ang(i)) * rad, cy + Math.sin(ang(i)) * rad];
+    const ringFor = (f) => rows.map((_, i) => pt(i, R * f).map((n) => n.toFixed(1)).join(",")).join(" ");
+    const rings = [0.25, 0.5, 0.75, 1].map((f) =>
+      '<polygon points="' + ringFor(f) + '" fill="none" stroke="color-mix(in srgb, var(--fg) 10%, transparent)" stroke-width="1"/>').join("");
+    const axes = rows.map((_, i) => { const [x, y] = pt(i, R); return '<line x1="' + cx + '" y1="' + cy + '" x2="' + x.toFixed(1) + '" y2="' + y.toFixed(1) + '" stroke="color-mix(in srgb, var(--fg) 9%, transparent)" stroke-width="1"/>'; }).join("");
+    const dpts = rows.map((r, i) => pt(i, R * (r.value / max)).map((n) => n.toFixed(1)).join(",")).join(" ");
+    const poly = '<polygon points="' + dpts + '" fill="color-mix(in srgb, var(--accent) 22%, transparent)" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"/>';
+    const dots = rows.map((r, i) => { const [x, y] = pt(i, R * (r.value / max)); return '<circle cx="' + x.toFixed(1) + '" cy="' + y.toFixed(1) + '" r="2.4" fill="var(--accent)"><title>' + esc(r.label) + ": " + nf(r.value) + "</title></circle>"; }).join("");
+    const labels = rows.map((r, i) => {
+      const [x, y] = pt(i, R + 13);
+      const anchor = Math.abs(x - cx) < 8 ? "middle" : x > cx ? "start" : "end";
+      const short = r.label.length > 11 ? r.label.slice(0, 10) + "…" : r.label;
+      return '<text x="' + x.toFixed(1) + '" y="' + (y + 3).toFixed(1) + '" text-anchor="' + anchor + '" font-size="7.5" fill="var(--dim)">' + esc(short) + "</text>";
+    }).join("");
+    // Wide horizontal padding (viewBox starts at -28) so end-anchored left labels never clip.
+    return '<div class="cpos-radar-wrap"><svg viewBox="-28 0 256 196" class="cpos-radar" role="img">' + rings + axes + poly + dots + labels + "</svg></div>";
+  }
+
   // Current & longest daily streaks computed across the full submission history.
   function streaks(byDay) {
     const days = Object.keys(byDay).filter((k) => byDay[k] > 0).sort();
@@ -197,6 +257,10 @@
     const attempted = new Set();           // distinct attempted problems (any verdict)
     const attemptsBySolved = {};           // problemKey -> submission count (to first AC)
     const solvedByRating = {}, tagCount = {}, verdicts = {}, langs = {}, byDay = {}, byIndex = {}, byMonth = {};
+    const solvedMonth = {};                 // 'YYYY-MM' -> { count, ratingSum, ratingN } over distinct solves
+    const byWeekday = new Array(7).fill(0); // submissions per weekday (0=Sun)
+    const byHour = new Array(24).fill(0);   // submissions per local hour
+    const byHourWeekday = Array.from({ length: 7 }, () => new Array(24).fill(0)); // punch-card matrix
     const tagSeen = new Set();
     let acCount = 0, hardest = null, firstTs = null, lastTs = null;
 
@@ -218,6 +282,9 @@
         byDay[ymd(d)] = (byDay[ymd(d)] || 0) + 1;
         const mk = d.getFullYear() + "-" + pad2(d.getMonth() + 1);
         byMonth[mk] = (byMonth[mk] || 0) + 1;
+        byWeekday[d.getDay()]++;
+        byHour[d.getHours()]++;
+        byHourWeekday[d.getDay()][d.getHours()]++;
       }
       attempted.add(key);
       // count one attempt per submission toward the problem until it is solved
@@ -227,6 +294,13 @@
       acCount++;
       if (solved.has(key)) continue;       // distinct dedup for solved-derived charts
       solved.add(key);
+      if (s.creationTimeSeconds) {
+        const sd = new Date(s.creationTimeSeconds * 1000);
+        const smk = sd.getFullYear() + "-" + pad2(sd.getMonth() + 1);
+        const sm = solvedMonth[smk] || (solvedMonth[smk] = { count: 0, ratingSum: 0, ratingN: 0 });
+        sm.count++;
+        if (p.rating) { sm.ratingSum += p.rating; sm.ratingN++; }
+      }
       if (p.rating) {
         solvedByRating[p.rating] = (solvedByRating[p.rating] || 0) + 1;
         if (hardest == null || p.rating > hardest.rating) hardest = { rating: p.rating, name: p.name, index: p.index, contestId: p.contestId };
@@ -244,14 +318,29 @@
     const solvedCount = solved.size;
     const accept = submissions.length ? Math.round((acCount / submissions.length) * 100) : 0;
     // average submissions to solve a problem (only over solved problems)
-    let totalAttempts = 0;
-    for (const k of solved) totalAttempts += attemptsBySolved[k] || 1;
+    let totalAttempts = 0, firstAcCount = 0;
+    for (const k of solved) {
+      const a = attemptsBySolved[k] || 1;
+      totalAttempts += a;
+      if (a === 1) firstAcCount++;            // solved on the very first submission
+    }
     const avgAttempts = solvedCount ? totalAttempts / solvedCount : 0;
     const attemptedUnsolved = attempted.size - solvedCount;
+    const firstAcRate = solvedCount ? Math.round((firstAcCount / solvedCount) * 100) : 0;
+    // peak activity records
+    let mostActiveDay = { date: null, count: 0 };
+    for (const [day, c] of Object.entries(byDay)) if (c > mostActiveDay.count) mostActiveDay = { date: day, count: c };
+    let peakHour = -1, peakHourN = 0;
+    for (let h = 0; h < 24; h++) if (byHour[h] > peakHourN) { peakHourN = byHour[h]; peakHour = h; }
+    let peakDow = -1, peakDowN = 0;
+    for (let w = 0; w < 7; w++) if (byWeekday[w] > peakDowN) { peakDowN = byWeekday[w]; peakDow = w; }
 
     return {
       solvedCount, acCount, accept, solvedByRating, tagCount, verdicts, langs, byDay, byIndex, byMonth,
-      hardest, avgAttempts, attemptedUnsolved, firstTs, lastTs, totalSubs: submissions.length
+      solvedMonth, byWeekday, byHour, byHourWeekday,
+      hardest, avgAttempts, attemptedUnsolved, firstAcCount, firstAcRate,
+      mostActiveDay, peakHour, peakHourN, peakDow, peakDowN,
+      firstTs, lastTs, totalSubs: submissions.length
     };
   }
 
@@ -481,7 +570,13 @@
       fact("Rating volatility", rf.volatility != null ? "±" + nf(rf.volatility) : "—",
         "var(--fg)", "std-dev of contest deltas", "var(--accent)") +
       fact("Active span", spanText,
-        "var(--fg)", st.firstTs ? "since " + ymd(new Date(st.firstTs)) : "", "var(--accent)");
+        "var(--fg)", st.firstTs ? "since " + ymd(new Date(st.firstTs)) : "", "var(--accent)") +
+      fact("First-attempt AC", st.solvedCount ? st.firstAcRate + "%" : "—",
+        st.firstAcRate >= 50 ? "var(--ok)" : "var(--warn)", "solved on the first submission", "var(--ok)") +
+      fact("Most active day", st.mostActiveDay.count ? nf(st.mostActiveDay.count) + " subs" : "—",
+        "var(--cf)", st.mostActiveDay.date || "", "var(--cf)") +
+      fact("Peak coding hour", st.peakHour >= 0 ? pad2(st.peakHour) + ":00" : "—",
+        "var(--fg)", st.peakHourN ? nf(st.peakHourN) + " submissions" : "", "var(--accent)");
     side("", "Insights", '<div class="cpos-facts">' + insights + "</div>");
 
     // 10) Submissions over time (monthly, last ~18 months)
@@ -491,6 +586,37 @@
       return { label: MONTHS[Number(mo) - 1] + " '" + y.slice(2), value: st.byMonth[m] };
     });
     main("span2", "Submissions over time (monthly)", bars(recent, () => "var(--cf)", 56));
+
+    // 11) Punch-card — when you submit (hour × weekday)
+    main("span3", "When you code (hour × weekday)",
+      punchCard(st.byHourWeekday, { peakHour: st.peakHour, peakDow: st.peakDow }));
+
+    // 12) Tag strengths radar (top distinct-solve tags)
+    side("", "Tag strengths", radar(topRows(st.tagCount, 8)));
+
+    // 13) Difficulty trend — average rating of problems solved per month
+    const diffRows = Object.keys(st.solvedMonth).sort().slice(-14)
+      .filter((m) => st.solvedMonth[m].ratingN > 0)
+      .map((m) => {
+        const sm = st.solvedMonth[m];
+        const avg = Math.round(sm.ratingSum / sm.ratingN);
+        const [y, mo] = m.split("-");
+        return { label: MONTHS[Number(mo) - 1] + " '" + y.slice(2), value: avg, title: avg + " avg rating · " + sm.count + " solved" };
+      });
+    main("span2", "Difficulty trend (avg solved rating / month)",
+      diffRows.length ? bars(diffRows, (r) => ratingColor(Number(r.value)), 56) : '<div class="cpos-empty">No rated solves yet.</div>');
+
+    // 14) Activity by weekday (Mon→Sun)
+    const dowRows = [1, 2, 3, 4, 5, 6, 0].map((w) => ({ label: WDAY[w], value: st.byWeekday[w] }));
+    side("", "Activity by weekday",
+      bars(dowRows, (r, i) => "color-mix(in srgb, var(--accent) " + Math.max(45, 100 - i * 7) + "%, var(--dim))", 36));
+
+    // 15) Problems solved per month (distinct)
+    const solvedRecent = Object.keys(st.solvedMonth).sort().slice(-14).map((m) => {
+      const [y, mo] = m.split("-");
+      return { label: MONTHS[Number(mo) - 1] + " '" + y.slice(2), value: st.solvedMonth[m].count };
+    });
+    main("span2", "Problems solved per month", bars(solvedRecent, () => "var(--ok)", 56));
   }
 
   function remove() { document.getElementById(ROOT_ID)?.remove(); }

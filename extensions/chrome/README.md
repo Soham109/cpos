@@ -2,7 +2,7 @@
 
 Browser extension for Codeforces, CSES, and AtCoder. Captures public sample tests and relays them to CPOS on your machine. Autofills judge submit pages when you submit from VS Code or the terminal app.
 
-**Current version:** 0.15.2 (see [CHANGELOG.md](../../CHANGELOG.md)).
+**Current version:** 0.15.4 (see [CHANGELOG.md](../../CHANGELOG.md)).
 
 ## Install
 
@@ -23,7 +23,7 @@ Compete workflow uses public `ntfy.sh` topics to deliver race invitations,
 accept/decline replies, and public-race discovery; it never sends source code,
 cookies, or passwords. See [PRIVACY.md](PRIVACY.md).
 
-## Interface & features (0.15.3)
+## Interface & features (0.15.4)
 
 Click the toolbar icon for a focused **Settings / Compete** popup:
 

@@ -164,7 +164,7 @@
   border-radius: 10px !important;
   box-shadow: none !important;
 }
-#cpos-cf-focus-toggle svg { display: block; }
+#cpos-cf-focus-toggle svg { display: block !important; width: 16px !important; height: 16px !important; }
 #cpos-cf-focus-toggle:hover {
   color: var(--fg) !important;
   background: color-mix(in srgb, var(--panel-2) 80%, transparent) !important;
