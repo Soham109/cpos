@@ -299,6 +299,15 @@
       values = h;
       score = 0.5;
     }
+    if (!values && lines.length >= 2) {
+      // Headerless column of numbers — one answer per line (typical multi-test
+      // output). Low confidence so any structured reading wins over it.
+      const col = lines.map(toks);
+      if (col.every((t) => t.length === 1 && isNum(t[0]))) {
+        values = col.map((t) => t[0]);
+        score = 0.35;
+      }
+    }
     if (!values) return null;
     const out = [];
     // Values that all point inside [base, base+n) form a functional graph
@@ -424,23 +433,39 @@
     };
   }
 
-  // Several strings, one per line (LCS pairs, word lists, k binary strings…),
-  // with or without a count header. Char grids win when they truly look like
-  // grids; ragged or wide-alphabet line sets land here.
+  // Several strings, one per line (LCS pairs, word lists, k binary masks —
+  // the classic multi-test OUTPUT shape), with or without a count header.
+  // Digit runs count as strings when they carry string signals: leading
+  // zeros ("00", "00010") or a pure 0/1 alphabet. Char grids win when they
+  // truly look like grids; ragged or wide-alphabet line sets land here.
   function parseStrings(lines) {
     if (lines.length < 2) return null;
+    const leadZero = (s) => s.length > 1 && s[0] === "0";
     const h = toks(lines[0]);
-    const headered = allInts(h) && (h.length === 1 || h.length === 2);
+    // A count header never has leading zeros; "00" opening the input is data.
+    const headered = allInts(h) && (h.length === 1 || h.length === 2)
+      && !h.some(leadZero) && Number(h[0]) >= 1 && Number(h[0]) <= 200000;
     const start = headered ? 1 : 0;
-    const list = [];
+    const raw = [];
     for (let i = start; i < lines.length; i++) {
       const t = toks(lines[i]);
-      if (t.length !== 1 || isNum(t[0])) return null;
-      list.push([...t[0]]);
+      if (t.length !== 1) return null;
+      raw.push(t[0]);
     }
-    if (list.length < 2 || !list.some((s) => s.length >= 2)) return null;
-    const n = headered ? Number(h[0]) : 0;
-    const score = headered && n === list.length ? 0.75 : headered ? 0.45 : 0.6;
+    if (raw.length < 2 || !raw.some((s) => s.length >= 2)) return null;
+    const someNonNum = raw.some((s) => !isNum(s));
+    if (someNonNum && raw.some((s) => isNum(s) && !leadZero(s) && !/^[01]+$/.test(s))) return null; // mixed words+numbers: not a string list
+    let score;
+    if (someNonNum) {
+      score = headered && Number(h[0]) === raw.length ? 0.75 : headered ? 0.45 : 0.6;
+    } else {
+      // all-numeric lines: only string-like if leading zeros or binary alphabet
+      const binary = raw.every((s) => /^[01]+$/.test(s));
+      const zeros = raw.some(leadZero);
+      if (!binary && !zeros) return null;
+      score = binary ? 0.55 : 0.5;
+    }
+    const list = raw.map((s) => [...s]);
     return {
       type: "strings", score,
       note: list.length + " strings · longest " + Math.max(...list.map((s) => s.length)),
@@ -1701,7 +1726,7 @@
     "#cpos frame          end an animation frame\n" +
     "#cpos clear          reset highlights\n\n" +
     "Keyboard (click the drawing first):\n" +
-    "[ ]  prev/next sample     { }  prev/next case\n" +
+    "← → or { }  prev/next case    ↑ ↓ or [ ]  prev/next sample\n" +
     "space  play/pause trace   , .  step trace   r  run   f  re-fit";
   const TRACE_MACRO_CPP = '#define VIZ(...) do{fprintf(stderr,"#cpos " __VA_ARGS__);fputc(\'\\n\',stderr);}while(0)\n// VIZ("visit %d",u); VIZ("cell %d %d %lld",r,c,dp[r][c]); VIZ("frame");';
   const TRACE_MACRO_PY = 'import sys\nviz = lambda *a: print("#cpos", *a, file=sys.stderr)\n# viz("visit", u); viz("set", i, dp[i]); viz("frame")';
@@ -1753,9 +1778,15 @@
     sampleSel.title = "Which sample test to draw";
     const srcBtn = domEl("button", "cvz-ic", "IN");
     srcBtn.title = "Visualize the input or the expected output";
+    const casePrev = domEl("button", "cvz-ic", "‹");
+    casePrev.title = "Previous case (also: { or ← after clicking the drawing)";
+    casePrev.style.display = "none";
     const caseSel = document.createElement("select");
-    caseSel.title = "Multi-testcase input: which case to draw";
+    caseSel.title = "Multi-testcase input: which case to draw ({ } or ← → to cycle)";
     caseSel.style.display = "none";
+    const caseNext = domEl("button", "cvz-ic", "›");
+    caseNext.title = "Next case (also: } or → after clicking the drawing)";
+    caseNext.style.display = "none";
     const typeSel = document.createElement("select");
     typeSel.title = "Structure type (Auto infers it)";
     const runBtn = domEl("button", "cvz-ic cvz-primary", "▶ RUN");
@@ -1775,7 +1806,9 @@
     svgBtn.title = "Download as SVG";
     bar.appendChild(sampleSel);
     bar.appendChild(srcBtn);
+    bar.appendChild(casePrev);
     bar.appendChild(caseSel);
+    bar.appendChild(caseNext);
     bar.appendChild(typeSel);
     bar.appendChild(runBtn);
     bar.appendChild(helpBtn);
@@ -2104,6 +2137,8 @@
     tPlay.addEventListener("click", () => { if (trace && trace.timer) stopPlay(); else startPlay(); });
     tNext.addEventListener("click", () => { stopPlay(); traceSeek((trace ? trace.cur : 0) + 1); });
     tClose.addEventListener("click", closeTrace);
+    casePrev.addEventListener("click", () => setCase(state.caseIdx - 1));
+    caseNext.addEventListener("click", () => setCase(state.caseIdx + 1));
     tSlider.addEventListener("input", () => { stopPlay(); traceSeek(Number(tSlider.value)); });
     tSpeed.addEventListener("change", () => { if (trace && trace.timer) startPlay(); });
 
@@ -2167,10 +2202,10 @@
       state.seg = chooseSegmentation(splitLines(raw), currentBlocks(), hintBoosts(state.statementText));
       if (!state.seg) {
         state.caseIdx = 0;
-        caseSel.style.display = "none";
+        caseSel.style.display = casePrev.style.display = caseNext.style.display = "none";
         return;
       }
-      caseSel.style.display = "";
+      caseSel.style.display = casePrev.style.display = caseNext.style.display = "";
       caseSel.innerHTML = "";
       const all = document.createElement("option");
       all.value = "0";
@@ -2415,6 +2450,10 @@
         case "]": setSample((state.si < 0 ? -1 : state.si) + 1); break;
         case "{": setCase(state.caseIdx - 1); break;
         case "}": setCase(state.caseIdx + 1); break;
+        case "ArrowLeft": if (state.seg) setCase(state.caseIdx - 1); else setSample((state.si < 0 ? 0 : state.si) - 1); break;
+        case "ArrowRight": if (state.seg) setCase(state.caseIdx + 1); else setSample((state.si < 0 ? -1 : state.si) + 1); break;
+        case "ArrowUp": setSample((state.si < 0 ? 0 : state.si) - 1); break;
+        case "ArrowDown": setSample((state.si < 0 ? -1 : state.si) + 1); break;
         case " ": if (trace) { if (trace.timer) stopPlay(); else startPlay(); } break;
         case ",": if (trace) { stopPlay(); traceSeek(trace.cur - 1); } break;
         case ".": if (trace) { stopPlay(); traceSeek(trace.cur + 1); } break;
