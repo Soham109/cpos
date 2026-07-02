@@ -146,7 +146,7 @@
         const res = await fetch(base + "/run", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ code, language, tests: [{ input, expected: "" }] })
+          body: JSON.stringify({ code, language, trace: true, tests: [{ input, expected: "" }] })
         });
         if (!res.ok) { lastErr = new Error("runner error " + res.status); continue; }
         const data = await res.json();

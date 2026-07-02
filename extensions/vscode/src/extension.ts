@@ -514,12 +514,12 @@ async function handleRequest(req: http.IncomingMessage, res: http.ServerResponse
   // pipeline as Run Samples; does not touch capture or submit.
   if (req.method === "POST" && req.url === "/run") {
     try {
-      const body = await readJson<{ code: string; language?: string; tests?: Array<{ input?: string; expected?: string; expected_output?: string }> }>(req);
+      const body = await readJson<{ code: string; language?: string; trace?: boolean; tests?: Array<{ input?: string; expected?: string; expected_output?: string }> }>(req);
       if (!body.code || !Array.isArray(body.tests)) {
         sendJson(res, 400, { ok: false, error: "missing code/tests" });
         return;
       }
-      const results = await runCodeAgainstTests(body.code, body.language, body.tests);
+      const results = await runCodeAgainstTests(body.code, body.language, body.tests, body.trace === true);
       sendJson(res, 200, { ok: true, results });
     } catch (error) {
       sendJson(res, 400, { ok: false, error: error instanceof Error ? error.message : String(error) });
@@ -595,10 +595,146 @@ async function handleRequest(req: http.IncomingMessage, res: http.ServerResponse
 // Compile `code` in `language` and run it against each test, returning per-test
 // verdicts. Self-contained (writes to the build dir), so it never disturbs the
 // user's solution files, capture state, or pending submissions.
+// ---------------------------------------------------------------------------
+// Auto-tracing for the visualizer: instrument the user's program so a plain
+// run narrates itself as #cpos events on stderr — no manual annotations.
+
+// Python: run the script under sys.settrace; every new/changed local scalar
+// becomes a `var` event and list / list-of-list mutations become `set`/`cell`
+// paints, grouped into one frame per executed line.
+const PY_TRACER = `import os, runpy, sys
+
+TARGET = os.path.abspath(sys.argv[1])
+sys.argv = sys.argv[1:]
+BUDGET = 20000
+emitted = 0
+SCALARS = (int, float, str, bool)
+prevs = {}
+
+def emit(line):
+    global emitted
+    emitted += 1
+    sys.stderr.write("#cpos " + line + chr(10))
+
+def fmt(v):
+    s = repr(v) if isinstance(v, str) else str(v)
+    return s.replace(chr(10), " ")[:24]
+
+def snap(val):
+    if len(val) > 5000:
+        return None
+    if all(isinstance(x, SCALARS) for x in val):
+        return ("1d", list(val))
+    if all(isinstance(x, list) and all(isinstance(y, SCALARS) for y in x) for x in val):
+        if sum(len(x) for x in val) > 20000:
+            return None
+        return ("2d", [list(x) for x in val])
+    return None
+
+def tracer(frame, event, arg):
+    global emitted
+    if emitted >= BUDGET:
+        sys.settrace(None)
+        return None
+    if frame.f_code.co_filename != TARGET:
+        return None
+    if event != "line" and event != "return":
+        return tracer
+    prev = prevs.setdefault(id(frame), {})
+    changed = False
+    for name, val in list(frame.f_locals.items()):
+        if name.startswith("__") or name == "_":
+            continue
+        if isinstance(val, SCALARS):
+            key = ("s", name)
+            if prev.get(key, prevs) != val:
+                prev[key] = val
+                emit("var %s %s" % (name, fmt(val)))
+                changed = True
+        elif isinstance(val, list):
+            snapped = snap(val)
+            if snapped is None:
+                continue
+            kind, data = snapped
+            key = ("l", name)
+            old = prev.get(key)
+            prev[key] = (kind, data)
+            if old is None or old[0] != kind or len(old[1]) != len(data):
+                emit("var %s list[%d]" % (name, len(data)))
+                changed = True
+            elif kind == "1d":
+                for i in range(len(data)):
+                    if old[1][i] != data[i]:
+                        emit("set %d %s" % (i + 1, fmt(data[i])))
+                        changed = True
+            else:
+                for r in range(len(data)):
+                    if len(old[1][r]) != len(data[r]):
+                        continue
+                    for c in range(len(data[r])):
+                        if old[1][r][c] != data[r][c]:
+                            emit("cell %d %d %s" % (r + 1, c + 1, fmt(data[r][c])))
+                            changed = True
+    if changed:
+        emit("frame")
+    return tracer
+
+sys.settrace(tracer)
+try:
+    runpy.run_path(TARGET, run_name="__main__")
+finally:
+    sys.settrace(None)
+`;
+
+// C/C++: best-effort source rewrite. Statement-level indexed assignments
+// (dp[i] = …, g[r][c] += …) gain a paint emitter and simple new-variable
+// declarations gain a var emitter. If the instrumented source fails to
+// compile (macros can trip on exotic code), the runner silently falls back
+// to the original source — instrumentation can never break a run.
+const CPP_TRACE_HELPER = `#include <sstream>
+#include <string>
+#include <cstdio>
+static long cpos_viz_budget__ = 20000;
+template <typename T> static std::string cpos_vs__(const T& v) { std::ostringstream o__; o__ << v; return o__.str(); }
+#define CPOS_EMIT__(...) do { if (cpos_viz_budget__ > 0) { --cpos_viz_budget__; std::fprintf(stderr, __VA_ARGS__); std::fputc('\\n', stderr); } } while (0)
+#define CPOS_T1__(a, i) CPOS_EMIT__("#cpos set %lld %s", (long long)(i) + 1, cpos_vs__((a)[i]).c_str())
+#define CPOS_T2__(a, i, j) CPOS_EMIT__("#cpos cell %lld %lld %s", (long long)(i) + 1, (long long)(j) + 1, cpos_vs__((a)[i][j]).c_str())
+#define CPOS_TV__(x) CPOS_EMIT__("#cpos var %s %s", #x, cpos_vs__(x).c_str())
+`;
+
+function instrumentCppForTrace(code: string): string | undefined {
+  if (code.includes("#cpos")) return undefined; // manual tracing wins
+  const idx = String.raw`\[([^\[\]"',]+)\]`;
+  const reIndexed = new RegExp(
+    String.raw`^(\s*)([A-Za-z_]\w*)\s*` + idx + String.raw`(?:\s*` + idx + String.raw`)?\s*(?:=|\+=|-=|\*=|/=|%=|\|=|&=|\^=)\s*[^=].*;\s*$`
+  );
+  const reDecl = /^(\s*)(?:int|long|long long|ll|double|float|char|bool|size_t|auto|string|std::string)\s+([A-Za-z_]\w*)\s*=\s*[^=].*;\s*$/;
+  let touched = 0;
+  const out = code.split("\n").map((line) => {
+    // stay away from strings, comments and loop headers — too easy to break
+    if (/["']|\/\/|\/\*|\bfor\b|\bwhile\b|\breturn\b/.test(line)) return line;
+    const mi = line.match(reIndexed);
+    if (mi && !/\+\+|--/.test((mi[3] ?? "") + (mi[4] ?? ""))) {
+      touched++;
+      if (mi[4] !== undefined) return `${line} CPOS_T2__(${mi[2]}, ${mi[3]}, ${mi[4]});`;
+      return `${line} CPOS_T1__(${mi[2]}, ${mi[3]});`;
+    }
+    const md = line.match(reDecl);
+    if (md) {
+      touched++;
+      return `${line} CPOS_TV__(${md[2]});`;
+    }
+    return line;
+  });
+  if (!touched) return undefined;
+  return CPP_TRACE_HELPER + "\n" + out.join("\n");
+}
+
 async function runCodeAgainstTests(
   code: string,
   language: string | undefined,
-  tests: Array<{ input?: string; expected?: string; expected_output?: string }>
+  tests: Array<{ input?: string; expected?: string; expected_output?: string }>,
+  trace = false
 ): Promise<Array<{ index: number; verdict: Verdict; passed: boolean; actual: string; expected: string; timeMs: number; stderr?: string }>> {
   const lang = language && DEFAULT_COMMANDS[language] ? language : resolveDefaultLanguage();
   const cfg = getCompileConfig(lang);
@@ -611,12 +747,31 @@ async function runCodeAgainstTests(
   await fs.writeFile(source, code);
   const timeoutMs = config().get<number>("runTimeoutMs", 5000);
 
+  let runTemplate = cfg.run;
+  if (trace && (lang === "python" || lang === "pypy") && !code.includes("#cpos")) {
+    const tracerPath = path.join(buildDir, "cpos_pytrace.py");
+    await fs.writeFile(tracerPath, PY_TRACER);
+    runTemplate = cfg.run.replace("{source}", `${quoteShellPath(tracerPath)} {source}`);
+  }
+
   if (cfg.compile) {
-    const compileCommand = expandCommand(cfg.compile, source, base, buildDir);
-    const compileResult = await runShell(compileCommand, "", buildDir, Math.max(timeoutMs, 20000));
-    if (compileResult.code !== 0) {
-      const detail = (compileResult.stderr || compileResult.stdout).trim();
-      return tests.map((_, index) => ({ index, verdict: "CE" as Verdict, passed: false, actual: detail, expected: "", timeMs: 0 }));
+    let compiled = false;
+    if (trace && lang === "cpp") {
+      const instrumented = instrumentCppForTrace(code);
+      if (instrumented) {
+        await fs.writeFile(source, instrumented);
+        const attempt = await runShell(expandCommand(cfg.compile, source, base, buildDir), "", buildDir, Math.max(timeoutMs, 20000));
+        if (attempt.code === 0) compiled = true;
+        else await fs.writeFile(source, code); // fall back to the original
+      }
+    }
+    if (!compiled) {
+      const compileCommand = expandCommand(cfg.compile, source, base, buildDir);
+      const compileResult = await runShell(compileCommand, "", buildDir, Math.max(timeoutMs, 20000));
+      if (compileResult.code !== 0) {
+        const detail = (compileResult.stderr || compileResult.stdout).trim();
+        return tests.map((_, index) => ({ index, verdict: "CE" as Verdict, passed: false, actual: detail, expected: "", timeMs: 0 }));
+      }
     }
   }
 
@@ -624,7 +779,7 @@ async function runCodeAgainstTests(
   for (let i = 0; i < tests.length; i++) {
     const t = tests[i];
     const expected = (t.expected ?? t.expected_output ?? "").toString();
-    const runCommand = expandCommand(cfg.run, source, base, buildDir);
+    const runCommand = expandCommand(runTemplate, source, base, buildDir);
     const r = await runShell(runCommand, (t.input ?? "").toString(), buildDir, timeoutMs);
     const ev = evaluate(i, { input: t.input ?? "", expected_output: expected }, r);
     results.push({ index: i, verdict: ev.verdict, passed: ev.passed, actual: ev.actual, expected, timeMs: ev.timeMs, stderr: ev.stderr });
@@ -2160,7 +2315,7 @@ async function runTraceForViz(id: number, input: string): Promise<void> {
       reply({ error: `${path.basename(source)} is empty — write your solution first.` });
       return;
     }
-    const results = await runCodeAgainstTests(code, languageForFile(source), [{ input, expected: "" }]);
+    const results = await runCodeAgainstTests(code, languageForFile(source), [{ input, expected: "" }], true);
     const r = results[0];
     if (!r) {
       reply({ error: "The runner returned no result." });

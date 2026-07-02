@@ -955,6 +955,12 @@
 .cvz-flash { position: absolute; top: 10px; left: 50%; transform: translateX(-50%) translateY(-6px); z-index: 8; max-width: min(92%, 560px); background: var(--cpos-panel, #1b1b2b); color: var(--cpos-fg, #e8e6f0); border: 1px solid var(--cpos-accent, #b794ff); border-radius: 8px; padding: 8px 14px; font-size: 12px; line-height: 1.5; box-shadow: 0 6px 22px rgba(0,0,0,0.45); opacity: 0; pointer-events: none; transition: opacity 0.15s ease, transform 0.15s ease; cursor: pointer; }
 .cvz-flash.open { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
 .cvz-flash.err { border-color: var(--cpos-bad, #ff7a93); color: var(--cpos-bad, #ff7a93); }
+.cvz-vars { position: absolute; left: 8px; bottom: 8px; z-index: 4; max-width: 46%; max-height: 55%; overflow: auto; background: color-mix(in srgb, var(--cpos-panel, #1b1b2b) 88%, transparent); border: 1px solid var(--cpos-border, #2a2a3e); border-radius: 8px; padding: 7px 10px; font: 11px/1.6 ui-monospace, Menlo, Consolas, monospace; display: none; }
+.cvz-vars.open { display: block; }
+.cvz-vars .cvz-vh { color: var(--cpos-dim, #8b88a0); font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 2px; }
+.cvz-vars .cvz-vrow b { color: var(--cpos-accent, #b794ff); font-weight: 600; }
+.cvz-vars .cvz-vrow span { color: var(--cpos-fg, #e8e6f0); }
+.cvz-vars .cvz-vrow.fresh span { color: var(--cpos-warn, #f0c060); }
 .cvz-grow { flex: 1 1 auto; }
 .cvz-stage { position: relative; flex: 1 1 auto; min-height: 0; overflow: hidden; background: var(--cpos-bg, #14141f); }
 .cvz-stage svg { display: block; width: 100%; height: 100%; cursor: grab; }
@@ -1723,13 +1729,20 @@
   }
 
   const TRACE_HELP =
-    "Animate YOUR code on this sample: print trace lines to stderr while it runs.\n" +
-    "The runner captures stderr locally; judges never see it.\n\n" +
+    "▶ RUN executes your code on this sample and AUTO-TRACES it — no setup:\n" +
+    "· Python/PyPy: every new variable, changed value and list/matrix\n" +
+    "  mutation is captured line by line and replayed here.\n" +
+    "· C/C++: array and matrix assignments (dp[i]=…, g[r][c]=…) and new\n" +
+    "  scalar declarations are instrumented automatically before compiling.\n" +
+    "Variables appear in a live watch panel; array/grid writes paint cells.\n\n" +
+    "Want manual control instead? Print your own trace lines to stderr\n" +
+    "(they override auto-tracing; judges never see stderr):\n" +
     "#cpos visit u        highlight node / array index / string position u\n" +
     "#cpos visit r c      highlight grid cell (row col, 1-based)\n" +
     "#cpos set i v        write v into array/string cell i\n" +
     "#cpos cell r c v     write v into a grid/matrix cell\n" +
     "#cpos edge u v       highlight edge u-v\n" +
+    "#cpos var name v     upsert a row in the variables panel\n" +
     "#cpos frame          end an animation frame\n" +
     "#cpos clear          reset highlights\n\n" +
     "Keyboard (click the drawing first):\n" +
@@ -2101,6 +2114,25 @@
     const tSpeed = traceBar.querySelector("select");
     const touched = new Map(); // element → original paint attributes
 
+    // Live variables — `#cpos var name value` events (emitted by the
+    // auto-tracer or by hand) build a watch table over the drawing.
+    const varsBox = domEl("div", "cvz-vars");
+    stage.appendChild(varsBox);
+    const varsState = new Map();
+    let varsFresh = new Set();
+    function renderVars() {
+      if (!varsState.size) { varsBox.classList.remove("open"); return; }
+      varsBox.classList.add("open");
+      let html = '<div class="cvz-vh">variables</div>';
+      let shown = 0;
+      for (const [name, value] of varsState) {
+        if (++shown > 24) { html += '<div class="cvz-vrow">… +' + (varsState.size - 24) + " more</div>"; break; }
+        html += '<div class="cvz-vrow' + (varsFresh.has(name) ? " fresh" : "") + '"><b>' + esc(name) + '</b> = <span>' + esc(value) + "</span></div>";
+      }
+      varsBox.innerHTML = html;
+    }
+    function esc(s) { return String(s).replace(/[&<>]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[c])); }
+
     function remember(el) {
       if (!el || touched.has(el)) return;
       touched.set(el, {
@@ -2174,6 +2206,10 @@
           }
           break;
         }
+        case "var": {
+          if (a.length >= 1) varsState.set(a[0], a.slice(1).join(" "));
+          break;
+        }
         case "clear": resetPaint(); break;
       }
     }
@@ -2181,8 +2217,18 @@
       if (!trace) return;
       k = clamp(k, 0, trace.frames.length);
       resetPaint();
+      varsState.clear();
       const pal = resolvePalette(container);
-      for (let f = 0; f < k; f++) for (const e of trace.frames[f]) applyEvent(e, pal);
+      for (let f = 0; f < k; f++) {
+        if (f === k - 1) {
+          // remember which variables move in the final frame so they glow
+          varsFresh = new Set();
+          for (const e of trace.frames[f]) if (e.op === "var" && e.args.length) varsFresh.add(e.args[0]);
+        }
+        for (const e of trace.frames[f]) applyEvent(e, pal);
+      }
+      if (k === 0) varsFresh = new Set();
+      renderVars();
       trace.cur = k;
       tSlider.value = String(k);
       tLabel.textContent = k + "/" + trace.frames.length;
@@ -2204,6 +2250,8 @@
     function closeTrace() {
       stopPlay();
       resetPaint();
+      varsState.clear();
+      renderVars();
       trace = null;
       traceBar.classList.remove("open");
     }
@@ -2249,9 +2297,9 @@
         const nFrames = loadTrace(res && res.stderr, true);
         if (!nFrames) {
           const msg = "Run finished" + (verdict ? " (" + verdict + ")" : "")
-            + " — but your code printed no #cpos lines to stderr, so there is nothing to animate. "
-            + "Press ? and paste the 2-line macro, then emit e.g. #cpos visit i from your loops.";
-          status.innerHTML = '<span class="cvz-warn">no #cpos trace in the run' + (verdict ? " (" + verdict + ")" : "") + "</span>";
+            + " — no trace events came back. Auto-tracing needs the VS Code runner and works for Python and C/C++; "
+            + "for other languages (or full control) print #cpos lines yourself — press ? for the grammar.";
+          status.innerHTML = '<span class="cvz-warn">no trace in the run' + (verdict ? " (" + verdict + ")" : "") + "</span>";
           flash(msg, true);
         } else {
           status.innerHTML = "<b>trace</b> " + nFrames + " frames" + (verdict ? " · verdict " + verdict : "") + " — playing (scrub below)";
