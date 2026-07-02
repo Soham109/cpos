@@ -947,6 +947,11 @@
 .cvz-bar .cvz-primary { background: var(--cpos-accent, #b794ff); color: var(--cpos-bg, #14141f); border-color: var(--cpos-accent, #b794ff); font-weight: 700; }
 .cvz-bar .cvz-primary:hover:not(:disabled) { filter: brightness(1.12); }
 .cvz-bar .cvz-primary:disabled { opacity: 0.6; cursor: default; }
+.cvz-ink { display: none; align-items: center; gap: 4px; }
+.cvz-ink.open { display: inline-flex; }
+.cvz-ink .cvz-dot { width: 16px; height: 16px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; padding: 0; }
+.cvz-ink .cvz-dot.on { border-color: var(--cpos-fg, #e8e6f0); }
+.cpos-viz .cvz-stage svg.inking { cursor: crosshair; }
 .cvz-flash { position: absolute; top: 10px; left: 50%; transform: translateX(-50%) translateY(-6px); z-index: 8; max-width: min(92%, 560px); background: var(--cpos-panel, #1b1b2b); color: var(--cpos-fg, #e8e6f0); border: 1px solid var(--cpos-accent, #b794ff); border-radius: 8px; padding: 8px 14px; font-size: 12px; line-height: 1.5; box-shadow: 0 6px 22px rgba(0,0,0,0.45); opacity: 0; pointer-events: none; transition: opacity 0.15s ease, transform 0.15s ease; cursor: pointer; }
 .cvz-flash.open { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
 .cvz-flash.err { border-color: var(--cpos-bad, #ff7a93); color: var(--cpos-bad, #ff7a93); }
@@ -1172,9 +1177,11 @@
         ui.tip(null);
       });
 
-      // Drag to reposition (force view); click to re-root (tree view).
+      // Drag to reposition (force view); click to re-root (tree view). In
+      // marker mode the event falls through so you can draw over nodes.
       let dragMoved = false;
       g.addEventListener("pointerdown", (ev) => {
+        if (ui.isMarking && ui.isMarking()) return;
         ev.stopPropagation();
         ev.preventDefault();
         dragMoved = false;
@@ -1727,7 +1734,7 @@
     "#cpos clear          reset highlights\n\n" +
     "Keyboard (click the drawing first):\n" +
     "← → or { }  prev/next case    ↑ ↓ or [ ]  prev/next sample\n" +
-    "space  play/pause trace   , .  step trace   r  run   f  re-fit";
+    "space  play/pause trace   , .  step trace   r  run   f  re-fit   m  marker";
   const TRACE_MACRO_CPP = '#define VIZ(...) do{fprintf(stderr,"#cpos " __VA_ARGS__);fputc(\'\\n\',stderr);}while(0)\n// VIZ("visit %d",u); VIZ("cell %d %d %lld",r,c,dp[r][c]); VIZ("frame");';
   const TRACE_MACRO_PY = 'import sys\nviz = lambda *a: print("#cpos", *a, file=sys.stderr)\n# viz("visit", u); viz("set", i, dp[i]); viz("frame")';
 
@@ -1794,6 +1801,20 @@
     if (!opts.runTrace) runBtn.style.display = "none";
     const helpBtn = domEl("button", "cvz-ic", "?");
     helpBtn.title = "How to animate your own algorithm on this drawing";
+    const markBtn = domEl("button", "cvz-ic", "✏");
+    markBtn.title = "Marker — draw freehand on the visualization (m). Drawings survive pan/zoom and export, and clear when the structure changes.";
+    const inkTools = domEl("span", "cvz-ink");
+    const inkDots = [];
+    ["accent", "bad", "ok"].forEach((key, i) => {
+      const dot = domEl("button", "cvz-dot" + (i === 0 ? " on" : ""));
+      dot.dataset.ink = key;
+      dot.title = "Marker color";
+      inkTools.appendChild(dot);
+      inkDots.push(dot);
+    });
+    const inkClear = domEl("button", "cvz-ic", "✕");
+    inkClear.title = "Erase all marker drawings";
+    inkTools.appendChild(inkClear);
     const editBtn = domEl("button", "cvz-ic", "✎");
     editBtn.title = "Edit / paste input";
     const optsBtn = domEl("button", "cvz-ic", "⚙");
@@ -1813,6 +1834,8 @@
     bar.appendChild(runBtn);
     bar.appendChild(helpBtn);
     bar.appendChild(domEl("span", "cvz-grow"));
+    bar.appendChild(inkTools);
+    bar.appendChild(markBtn);
     bar.appendChild(editBtn);
     bar.appendChild(optsBtn);
     bar.appendChild(fitBtn);
@@ -1829,6 +1852,11 @@
     const svg = svgEl("svg", { preserveAspectRatio: "xMidYMid meet" });
     const scene = svgEl("g");
     svg.appendChild(scene);
+    // Marker drawings live above the scene and are NOT wiped by re-renders;
+    // layouts are deterministic, so world coordinates stay valid until the
+    // structure itself changes (reparse clears them).
+    const inkLayer = svgEl("g");
+    svg.appendChild(inkLayer);
     const tipEl = domEl("div", "cvz-tip");
     const emptyEl = domEl("div", "cvz-empty");
     emptyEl.style.display = "none";
@@ -1949,8 +1977,66 @@
       view.w *= scale; view.h *= scale;
       applyView();
     }, { passive: false });
+    // -- marker (freehand ink over the drawing) --------------------------------
+    let markerOn = false;
+    let inkColorKey = "accent";
+    function setMarker(on) {
+      markerOn = on;
+      markBtn.classList.toggle("on", on);
+      inkTools.classList.toggle("open", on);
+      svg.classList.toggle("inking", on);
+    }
+    markBtn.addEventListener("click", () => setMarker(!markerOn));
+    inkDots.forEach((dot) => {
+      dot.addEventListener("click", () => {
+        inkColorKey = dot.dataset.ink;
+        inkDots.forEach((d) => d.classList.toggle("on", d === dot));
+      });
+    });
+    inkClear.addEventListener("click", () => { inkLayer.innerHTML = ""; });
+    function paintInkDots() {
+      const pal = resolvePalette(container);
+      inkDots.forEach((d) => { d.style.background = pal[d.dataset.ink]; });
+    }
+
     svg.addEventListener("pointerdown", (e) => {
       if (e.button !== 0) return;
+      if (markerOn) {
+        e.preventDefault();
+        const pal = resolvePalette(container);
+        const pts = [];
+        const pt0 = toWorld(e.clientX, e.clientY);
+        pts.push(pt0);
+        const path = svgEl("path", {
+          fill: "none", stroke: pal[inkColorKey] || pal.accent,
+          "stroke-width": Math.max(view.w * 0.004, 0.8),
+          "stroke-linecap": "round", "stroke-linejoin": "round",
+          "stroke-opacity": 0.9
+        });
+        const d = () => "M " + pts.map((p) => p.x.toFixed(1) + " " + p.y.toFixed(1)).join(" L ");
+        path.setAttribute("d", d());
+        inkLayer.appendChild(path);
+        const minStep = view.w * 0.002;
+        const move = (mv) => {
+          const p = toWorld(mv.clientX, mv.clientY);
+          const last = pts[pts.length - 1];
+          if (Math.hypot(p.x - last.x, p.y - last.y) < minStep) return;
+          pts.push(p);
+          path.setAttribute("d", d());
+        };
+        const up = () => {
+          // a bare click leaves a visible dot rather than an invisible path
+          if (pts.length === 1) {
+            path.remove();
+            inkLayer.appendChild(svgEl("circle", { cx: pt0.x, cy: pt0.y, r: Math.max(view.w * 0.004, 1), fill: pal[inkColorKey] || pal.accent, "fill-opacity": 0.9 }));
+          }
+          window.removeEventListener("pointermove", move);
+          window.removeEventListener("pointerup", up);
+        };
+        window.addEventListener("pointermove", move);
+        window.addEventListener("pointerup", up);
+        return;
+      }
       const start = { x: e.clientX, y: e.clientY, vx: view.x, vy: view.y };
       svg.classList.add("panning");
       const box = svg.getBoundingClientRect();
@@ -2253,6 +2339,7 @@
     function rerender() {
       scene.innerHTML = "";
       tip(null);
+      paintInkDots();
       const raw = currentRaw();
       if (!raw.trim()) {
         emptyEl.style.display = "flex";
@@ -2309,11 +2396,12 @@
       status.innerHTML = caseNote + (out.status || "") + extraNote;
     }
 
-    const ui = { svg, scene, tip, toWorld, rerender };
+    const ui = { svg, scene, tip, toWorld, rerender, isMarking: () => markerOn };
 
     function reparse() {
       state.root = null;
       closeTrace(); // the structure is changing; a stale trace makes no sense
+      inkLayer.innerHTML = ""; // marker drawings belong to the old structure
       populateCases();
       rerender();
     }
@@ -2458,6 +2546,7 @@
         case ",": if (trace) { stopPlay(); traceSeek(trace.cur - 1); } break;
         case ".": if (trace) { stopPlay(); traceSeek(trace.cur + 1); } break;
         case "f": rerender(); break;
+        case "m": setMarker(!markerOn); break;
         case "r": if (opts.runTrace && !runBtn.disabled) runBtn.click(); break;
         default: return;
       }

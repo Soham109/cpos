@@ -5,19 +5,19 @@ All notable changes to CPOS are documented here. Components are versioned indepe
 | Component | Current version | Version file |
 | --- | --- | --- |
 | Terminal app | 0.2.2 | `Cargo.toml` |
-| VS Code extension | 0.5.2 | `extensions/vscode/package.json` |
-| Browser companion (Chrome) | 0.15.4 | `extensions/chrome/manifest.json` |
-| Browser companion (Firefox) | 0.15.4 | `extensions/firefox/manifest.json` |
+| VS Code extension | 0.6.0 | `extensions/vscode/package.json` |
+| Browser companion (Chrome) | 0.16.0 | `extensions/chrome/manifest.json` |
+| Browser companion (Firefox) | 0.16.0 | `extensions/firefox/manifest.json` |
 
 Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
-## Unreleased
+## Browser companions 0.16.0 · VS Code extension 0.6.0 — 2026-07-02
 
 ### Added
 - **Sample structure visualizer (browser companions + VS Code).** A new ◈ VIZ slide-in panel on Codeforces, CSES and AtCoder problem pages — and a `CPOS: Visualize Samples` editor tab in VS Code (plus a Visualize button in the panel) — that auto-detects what a sample input actually is and draws it: graphs and trees (force/tidy layouts, weights, re-rooting, node values colored — e.g. marked vertices drawn red), parent arrays, grids and mazes, matrices with value heatmaps, arrays, permutations with cycle arcs, intervals, 2D point sets, character strings — bracket sequences get matched-pair arcs, nesting-depth colors and unmatched marks — multi-string inputs, and functional-graph views of pointer arrays (i → a[i]). Handles multi-testcase inputs (per-case selector), auxiliary value lines, trailing query lines, input vs expected-output views, manual type/indexing overrides, live-editable input, pan/zoom/drag, and SVG / Graphviz DOT export.
-- **Execution trace player.** The visualizer can run *your* code on the shown sample through the local CPOS runner and animate its execution on the drawing: print `#cpos visit u` / `#cpos set i v` / `#cpos cell r c v` / `#cpos edge u v` / `#cpos frame` lines to stderr (2-line macro provided in the panel's ? help) and scrub your own BFS/DFS/DP frame by frame — in the browser it runs the in-browser editor's code, in VS Code the active solution file. Run results and errors flash on the canvas, multi-test inputs execute exactly the case being viewed, and keyboard macros drive the panel (arrow keys or [ ] / { } for samples and cases — with ‹ › buttons beside the case selector — space/,/. for trace playback, r to run). Expected-output views understand answer shapes too: binary/leading-zero masks and YES/NO lines render as string rows, integer columns as arrays.
+- **Execution trace player.** The visualizer can run *your* code on the shown sample through the local CPOS runner and animate its execution on the drawing: print `#cpos visit u` / `#cpos set i v` / `#cpos cell r c v` / `#cpos edge u v` / `#cpos frame` lines to stderr (2-line macro provided in the panel's ? help) and scrub your own BFS/DFS/DP frame by frame — in the browser it runs the in-browser editor's code, in VS Code the active solution file. Run results and errors flash on the canvas, multi-test inputs execute exactly the case being viewed, and keyboard macros drive the panel (arrow keys or [ ] / { } for samples and cases — with ‹ › buttons beside the case selector — space/,/. for trace playback, r to run). Expected-output views understand answer shapes too: binary/leading-zero masks and YES/NO lines render as string rows, integer columns as arrays. A marker tool (✏ or m) draws freehand over any visualization in three ink colors — strokes survive pan/zoom, are included in SVG export, and clear when the structure changes.
 
 ## Browser companions 0.15.4 — 2026-06-29
 
