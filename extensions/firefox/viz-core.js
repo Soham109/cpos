@@ -2296,10 +2296,13 @@
         const verdict = res && res.verdict ? String(res.verdict) : "";
         const nFrames = loadTrace(res && res.stderr, true);
         if (!nFrames) {
-          const msg = "Run finished" + (verdict ? " (" + verdict + ")" : "")
-            + " — no trace events came back. Auto-tracing needs the VS Code runner and works for Python and C/C++; "
-            + "for other languages (or full control) print #cpos lines yourself — press ? for the grammar.";
-          status.innerHTML = '<span class="cvz-warn">no trace in the run' + (verdict ? " (" + verdict + ")" : "") + "</span>";
+          const outdatedRunner = res && res.traceSupported === false;
+          const msg = outdatedRunner
+            ? "The local runner ignored the auto-trace request — your CPOS VS Code extension is older than this visualizer. Update it to 0.6.0+ and reload the VS Code window, then hit RUN again."
+            : "Run finished" + (verdict ? " (" + verdict + ")" : "")
+              + " — no trace events came back. Auto-tracing works for Python and C/C++; "
+              + "for other languages (or full control) print #cpos lines yourself — press ? for the grammar.";
+          status.innerHTML = '<span class="cvz-warn">' + (outdatedRunner ? "runner outdated — reload VS Code" : "no trace in the run" + (verdict ? " (" + verdict + ")" : "")) + "</span>";
           flash(msg, true);
         } else {
           status.innerHTML = "<b>trace</b> " + nFrames + " frames" + (verdict ? " · verdict " + verdict : "") + " — playing (scrub below)";

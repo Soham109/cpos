@@ -520,7 +520,9 @@ async function handleRequest(req: http.IncomingMessage, res: http.ServerResponse
         return;
       }
       const results = await runCodeAgainstTests(body.code, body.language, body.tests, body.trace === true);
-      sendJson(res, 200, { ok: true, results });
+      // `trace` echoes support back so the visualizer can tell an old runner
+      // (which silently ignores the flag) apart from a run with no events.
+      sendJson(res, 200, { ok: true, results, trace: body.trace === true });
     } catch (error) {
       sendJson(res, 400, { ok: false, error: error instanceof Error ? error.message : String(error) });
     }
@@ -708,9 +710,21 @@ function instrumentCppForTrace(code: string): string | undefined {
   const reIndexed = new RegExp(
     String.raw`^(\s*)([A-Za-z_]\w*)\s*` + idx + String.raw`(?:\s*` + idx + String.raw`)?\s*(?:=|\+=|-=|\*=|/=|%=|\|=|&=|\^=)\s*[^=].*;\s*$`
   );
-  const reDecl = /^(\s*)(?:int|long|long long|ll|double|float|char|bool|size_t|auto|string|std::string)\s+([A-Za-z_]\w*)\s*=\s*[^=].*;\s*$/;
+  // Declarations with an initializer. `auto` is deliberately absent: lambdas
+  // and iterators are not ostream-printable and would sink the compile.
+  const reDecl = /^(\s*)(?:int|long|long long|ll|double|float|char|bool|size_t|string|std::string)\s+([A-Za-z_]\w*)\s*=\s*[^=].*;\s*$/;
+  // Plain scalar (re)assignment — `sum += a[i];`, `mx = max(mx, x);` — the
+  // values that actually tell the story of a run.
+  const reAssign = /^(\s*)([A-Za-z_]\w*)\s*(?:=|\+=|-=|\*=|\/=|%=|\|=|&=|\^=|<<=|>>=)\s*[^=].*;\s*$/;
   let touched = 0;
+  let depth = 0; // rough brace depth: emitters are statements, so only inject inside a function body
   const out = code.split("\n").map((line) => {
+    const atDepth = depth;
+    for (const ch of line) {
+      if (ch === "{") depth++;
+      else if (ch === "}") depth = Math.max(0, depth - 1);
+    }
+    if (atDepth < 1) return line;
     // stay away from strings, comments and loop headers — too easy to break
     if (/["']|\/\/|\/\*|\bfor\b|\bwhile\b|\breturn\b/.test(line)) return line;
     const mi = line.match(reIndexed);
@@ -723,6 +737,11 @@ function instrumentCppForTrace(code: string): string | undefined {
     if (md) {
       touched++;
       return `${line} CPOS_TV__(${md[2]});`;
+    }
+    const ma = line.match(reAssign);
+    if (ma) {
+      touched++;
+      return `${line} CPOS_TV__(${ma[2]});`;
     }
     return line;
   });
@@ -2434,7 +2453,7 @@ async function openVisualizer(): Promise<void> {
         if (!pending) return;
         pendingTraces.delete(msg.id);
         if (msg.error) pending.reject(new Error(msg.error));
-        else pending.resolve({ stderr: msg.stderr, verdict: msg.verdict, actual: msg.actual });
+        else pending.resolve({ stderr: msg.stderr, verdict: msg.verdict, actual: msg.actual, traceSupported: true });
       }
     });
     vscode.postMessage({ type: "ready" });

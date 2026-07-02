@@ -153,7 +153,7 @@
         const r = data && Array.isArray(data.results) ? data.results[0] : null;
         if (!r) { lastErr = new Error("runner returned no result"); continue; }
         if (r.verdict === "CE") throw new Error("compile error — fix it in the EDITOR panel (Run there shows the full message)");
-        return { stderr: r.stderr || "", verdict: r.verdict, actual: r.actual };
+        return { stderr: r.stderr || "", verdict: r.verdict, actual: r.actual, traceSupported: data.trace === true };
       } catch (e) {
         if (e && /compile error/.test(String(e.message))) throw e;
         lastErr = e;
