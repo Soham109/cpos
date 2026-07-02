@@ -1865,6 +1865,9 @@
     const svg = svgEl("svg", { preserveAspectRatio: "xMidYMid meet" });
     const scene = svgEl("g");
     svg.appendChild(scene);
+    // Execution cursor + variable pointers — redrawn on every trace seek.
+    const curLayer = svgEl("g");
+    svg.appendChild(curLayer);
     // Marker drawings live above the scene and are NOT wiped by re-renders;
     // layouts are deterministic, so world coordinates stay valid until the
     // structure itself changes (reparse clears them).
@@ -2229,9 +2232,69 @@
       }
       if (k === 0) varsFresh = new Set();
       renderVars();
+      drawCursorAndPointers(k, pal);
       trace.cur = k;
       tSlider.value = String(k);
       tLabel.textContent = k + "/" + trace.frames.length;
+    }
+
+    // "You are here": ring the element the current frame touched last, and
+    // draw labeled pointer flags under the cells/nodes that short integer
+    // variables (i, j, l, r, u…) currently index.
+    function geomOf(el) {
+      if (el.tagName === "circle") {
+        return { x: Number(el.getAttribute("cx")), yTop: Number(el.getAttribute("cy")) - Number(el.getAttribute("r")), yBot: Number(el.getAttribute("cy")) + Number(el.getAttribute("r")), r: Number(el.getAttribute("r")), circle: true, cy: Number(el.getAttribute("cy")) };
+      }
+      const x = Number(el.getAttribute("x")), y = Number(el.getAttribute("y"));
+      const w = Number(el.getAttribute("width")), h = Number(el.getAttribute("height"));
+      return { x: x + w / 2, yTop: y, yBot: y + h, w, h, rx: x, ry: y, circle: false };
+    }
+    function pointerHue(name) {
+      let acc = 0;
+      for (const ch of name) acc = acc * 31 + ch.charCodeAt(0);
+      return "hsl(" + Math.round((acc * 67) % 360) + " 72% 62%)";
+    }
+    function drawCursorAndPointers(k, pal) {
+      curLayer.innerHTML = "";
+      if (!trace || k === 0) return;
+      const H = lastHandles || {};
+      const cellOf = (key) => (H.cells && H.cells.get(String(key))) || null;
+      const anyOf = (key) => cellOf(key) || (H.nodes && H.nodes.get(String(key))) || null;
+      // 1) execution cursor: last paint target in the current frame
+      let target = null;
+      for (const e of trace.frames[k - 1]) {
+        const a = e.args;
+        if (e.op === "visit" || e.op === "mark") target = (a.length >= 2 && cellOf(a[0] + ":" + a[1])) || anyOf(a[0]) || target;
+        else if (e.op === "cell" && a.length >= 2) target = cellOf(a[0] + ":" + a[1]) || target;
+        else if (e.op === "set" && a.length >= 1) target = anyOf(a[0]) || target;
+      }
+      if (target && target.el) {
+        const g = geomOf(target.el);
+        if (g.circle) {
+          curLayer.appendChild(svgEl("circle", { cx: g.x, cy: g.cy, r: g.r + 3.5, fill: "none", stroke: pal.warn, "stroke-width": 2.2 }));
+        } else {
+          curLayer.appendChild(svgEl("rect", { x: g.rx - 2.5, y: g.ry - 2.5, width: g.w + 5, height: g.h + 5, rx: 5, fill: "none", stroke: pal.warn, "stroke-width": 2.2 }));
+        }
+      }
+      // 2) variable pointers into the drawn structure
+      if (!H.cells && !H.nodes) return;
+      const stacks = new Map();
+      for (const [name, value] of varsState) {
+        if (!/^[A-Za-z_]\w{0,2}$/.test(name)) continue;
+        if (name === "n" || name === "m" || name === "t" || name === "q") continue; // sizes, not positions
+        if (!/^-?\d+$/.test(value)) continue;
+        const h = anyOf(value);
+        if (!h || !h.el) continue;
+        const g = geomOf(h.el);
+        const lane = stacks.get(String(value)) || 0;
+        stacks.set(String(value), lane + 1);
+        const color = pointerHue(name);
+        const y0 = g.yBot + 3 + lane * 15;
+        curLayer.appendChild(svgEl("path", { d: "M " + g.x + " " + y0 + " l -4.5 7 l 9 0 z", fill: color }));
+        const label = svgEl("text", { x: g.x, y: y0 + 17, "text-anchor": "middle", "font-size": 10.5, "font-weight": 700, fill: color, stroke: pal.bg, "stroke-width": 3, "paint-order": "stroke", "font-family": "ui-monospace, Menlo, Consolas, monospace" });
+        label.textContent = name;
+        curLayer.appendChild(label);
+      }
     }
     function stopPlay() {
       if (trace && trace.timer) { clearInterval(trace.timer); trace.timer = null; }
@@ -2252,6 +2315,7 @@
       resetPaint();
       varsState.clear();
       renderVars();
+      curLayer.innerHTML = "";
       trace = null;
       traceBar.classList.remove("open");
     }
@@ -2389,6 +2453,7 @@
 
     function rerender() {
       scene.innerHTML = "";
+      if (!trace) curLayer.innerHTML = "";
       tip(null);
       paintInkDots();
       const raw = currentRaw();

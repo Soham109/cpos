@@ -716,6 +716,10 @@ function instrumentCppForTrace(code: string): string | undefined {
   // Plain scalar (re)assignment — `sum += a[i];`, `mx = max(mx, x);` — the
   // values that actually tell the story of a run.
   const reAssign = /^(\s*)([A-Za-z_]\w*)\s*(?:=|\+=|-=|\*=|\/=|%=|\|=|&=|\^=|<<=|>>=)\s*[^=].*;\s*$/;
+  // Loop headers that open a body on the same line get the loop variable
+  // emitted as the body's first statement — that's the "where is i right
+  // now" pointer the visualizer draws.
+  const reFor = /^(\s*)(?:for|rep|FOR|forn)\s*\(\s*(?:int\s+|ll\s+|long\s+long\s+|long\s+|size_t\s+|auto\s+)?([A-Za-z_]\w*)\s*[=,][^)]*\)\s*\{\s*$/;
   let touched = 0;
   let depth = 0; // rough brace depth: emitters are statements, so only inject inside a function body
   const out = code.split("\n").map((line) => {
@@ -725,6 +729,13 @@ function instrumentCppForTrace(code: string): string | undefined {
       else if (ch === "}") depth = Math.max(0, depth - 1);
     }
     if (atDepth < 1) return line;
+    if (!/["']/.test(line)) {
+      const mf = line.match(reFor);
+      if (mf) {
+        touched++;
+        return `${line} CPOS_TV__(${mf[2]});`;
+      }
+    }
     // stay away from strings, comments and loop headers — too easy to break
     if (/["']|\/\/|\/\*|\bfor\b|\bwhile\b|\breturn\b/.test(line)) return line;
     const mi = line.match(reIndexed);
