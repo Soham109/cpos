@@ -300,29 +300,45 @@
       score = 0.5;
     }
     if (!values) return null;
+    const out = [];
+    // Values that all point inside [base, base+n) form a functional graph
+    // (i → a[i]) — successor/teleport problems; offered as an alternate view.
+    const addFunctional = (nums, base) => {
+      const n = nums.length;
+      if (n < 2 || n > 100000) return;
+      for (const v of nums) if (v < base || v >= base + n) return;
+      out.push({
+        type: "graph", score: 0.5,
+        note: "functional graph · edges i → a[i] · n=" + n,
+        data: { n, edges: nums.map((v, i) => [i + base, v]), weighted: false, base, directed: true }
+      });
+    };
     // Permutation of 1..n (or 0..n-1)?
     if (values.every(isInt)) {
       const nums = values.map(Number);
       const base = nums.includes(0) ? 0 : 1;
+      addFunctional(nums, base);
       const want = new Set(nums);
       let isPerm = want.size === nums.length && nums.length >= 2;
       if (isPerm) for (const v of nums) if (v < base || v > nums.length - 1 + base) { isPerm = false; break; }
       if (isPerm) {
         const cyc = permCycles(nums, base);
         if (cyc) {
-          return {
+          out.unshift({
             type: "perm", score: Math.min(0.97, score + 0.12),
             note: "permutation · n=" + nums.length + " · " + cyc.cycles + (cyc.cycles === 1 ? " cycle" : " cycles") + extraNote,
             data: { values, nums, base, cycleOf: cyc.cycleOf, cycles: cyc.cycles }
-          };
+          });
+          return out;
         }
       }
     }
-    return {
+    out.unshift({
       type: "array", score,
       note: "array · n=" + values.length + extraNote,
       data: { values }
-    };
+    });
+    return out;
   }
 
   // Maximal run of "x y" pair lines starting at `start`, plus how many lines
@@ -369,6 +385,69 @@
   const parseIntervals = (lines) => parsePairs(lines, "intervals");
   const parsePoints = (lines) => parsePairs(lines, "points");
 
+  // Character strings — "n [k]" + one long token (bracket sequences, DNA-style
+  // strings, binary strings…), or a whole input that is a single token.
+  function parseString(lines) {
+    if (!lines.length) return null;
+    const h = toks(lines[0]);
+    const singleTok = (i) => {
+      const t = toks(lines[i] || "");
+      return t.length === 1 ? t[0] : null;
+    };
+    const isStr = (s) => !!s && s.length >= 2 && !isNum(s);
+    let str = null, score = 0, extra = "";
+    if (allInts(h) && h.length >= 1 && h.length <= 3 && lines.length >= 2) {
+      const n = Number(h[0]);
+      const s = singleTok(1);
+      // A digit run whose length equals the declared n is a binary/digit
+      // string ("5 1" + "11010"), not a scalar — length match disambiguates.
+      if (s && s.length === n && (isStr(s) || (n >= 2 && /^\d+$/.test(s)))) {
+        str = s;
+        const leftover = lines.length - 2;
+        score = leftover > 0 ? 0.6 : 0.9;
+        if (leftover > 0) extra = " · +" + leftover + " trailing lines ignored";
+      }
+    }
+    if (!str && lines.length === 1 && isStr(singleTok(0))) {
+      str = singleTok(0);
+      score = 0.65;
+    }
+    if (!str) return null;
+    const chars = [...str];
+    const bracketish = chars.filter((c) => "()[]{}".includes(c)).length;
+    const isBracket = bracketish / chars.length >= 0.9;
+    return {
+      type: "string",
+      score: isBracket ? Math.min(0.95, score + 0.05) : score,
+      note: (isBracket ? "bracket string" : "string") + " · n=" + chars.length + extra,
+      data: { chars, isBracket }
+    };
+  }
+
+  // Several strings, one per line (LCS pairs, word lists, k binary strings…),
+  // with or without a count header. Char grids win when they truly look like
+  // grids; ragged or wide-alphabet line sets land here.
+  function parseStrings(lines) {
+    if (lines.length < 2) return null;
+    const h = toks(lines[0]);
+    const headered = allInts(h) && (h.length === 1 || h.length === 2);
+    const start = headered ? 1 : 0;
+    const list = [];
+    for (let i = start; i < lines.length; i++) {
+      const t = toks(lines[i]);
+      if (t.length !== 1 || isNum(t[0])) return null;
+      list.push([...t[0]]);
+    }
+    if (list.length < 2 || !list.some((s) => s.length >= 2)) return null;
+    const n = headered ? Number(h[0]) : 0;
+    const score = headered && n === list.length ? 0.75 : headered ? 0.45 : 0.6;
+    return {
+      type: "strings", score,
+      note: list.length + " strings · longest " + Math.max(...list.map((s) => s.length)),
+      data: { list }
+    };
+  }
+
   function parseTokens(lines) {
     return {
       type: "tokens", score: 0.05,
@@ -379,6 +458,9 @@
 
   const HINTS = [
     [/permutation/, { perm: 0.2, array: 0.05 }],
+    [/bracket|parenthes/, { string: 0.25 }],
+    [/\bstring\b|substring|\bword\b|\btext\b|palindrom/, { string: 0.15, strings: 0.1 }],
+    [/successor|functional graph|teleport/, { graph: 0.2 }],
     [/\btree\b|vertices.*tree|rooted/, { tree: 0.15 }],
     [/\bgraph\b|\bedges?\b|vertices|undirected|directed/, { graph: 0.12, tree: 0.06 }],
     [/\bgrid\b|\bmaze\b|\bcells?\b|\brows?\b.*\bcolumns?\b/, { grid: 0.15, matrix: 0.06 }],
@@ -401,7 +483,7 @@
 
   function candidatesFor(lines, boosts) {
     const found = [];
-    for (const p of [parseGrid, parseGraphish, parseParentArray, parseMatrix, parseArray, parseIntervals, parsePoints]) {
+    for (const p of [parseGrid, parseGraphish, parseParentArray, parseMatrix, parseString, parseStrings, parseArray, parseIntervals, parsePoints]) {
       try {
         const c = p(lines);
         if (Array.isArray(c)) found.push(...c);
@@ -467,6 +549,28 @@
         if (cyc) return { type: "perm", score: 0, note: "permutation (forced) · n=" + nums.length, data: { values, nums, base, cycleOf: cyc.cycleOf, cycles: cyc.cycles } };
       }
       return { type: "array", score: 0, note: "array (forced) · n=" + values.length, data: { values } };
+    }
+    if (type === "strings") {
+      const list = [];
+      for (const l of lines) {
+        const t = toks(l);
+        if (t.length === 1) list.push([...t[0]]);
+      }
+      if (list.length < 1) return null;
+      return { type: "strings", score: 0, note: "strings (forced) · " + list.length, data: { list } };
+    }
+    if (type === "string") {
+      // Take the longest single-token line; fall back to all lines glued.
+      let best = "";
+      for (const l of lines) {
+        const t = toks(l);
+        if (t.length === 1 && t[0].length > best.length) best = t[0];
+      }
+      if (!best) best = lines.map((l) => l.trim()).join("");
+      if (!best) return null;
+      const chars = [...best];
+      const bracketish = chars.filter((c) => "()[]{}".includes(c)).length;
+      return { type: "string", score: 0, note: "string (forced) · n=" + chars.length, data: { chars, isBracket: bracketish / chars.length >= 0.9 } };
     }
     if (type === "intervals") {
       const rows = salvagePairs();
@@ -546,6 +650,11 @@
       }
       // n + one line of n values
       if (head.length === 1 && fits(1) && lineHas(0, (tk) => tk.length === n && allNums(tk))) outs.add(pos + 2);
+      // header + one single-token string line of length n ("n k" + bracket/char string)
+      if (fits(1)) {
+        const st = toks(lines[pos + 1] || "");
+        if (st.length === 1 && st[0].length === n && !isNum(st[0])) outs.add(pos + 2);
+      }
       // header + 1-2 value lines of n numbers + (n-1 or m) edge lines — the
       // classic tree/graph-with-node-values case body
       if (n >= 2) {
@@ -810,6 +919,12 @@
 .cvz-bar .cvz-ic { background: var(--cpos-panel-2, #232334); color: var(--cpos-fg, #e8e6f0); border: 1px solid var(--cpos-border, #2a2a3e); border-radius: 6px; padding: 3px 7px; font: inherit; font-size: 11.5px; cursor: pointer; line-height: 1.2; }
 .cvz-bar .cvz-ic:hover { border-color: var(--cpos-accent, #b794ff); }
 .cvz-bar .cvz-ic.on { background: var(--cpos-accent, #b794ff); color: var(--cpos-bg, #14141f); border-color: var(--cpos-accent, #b794ff); }
+.cvz-bar .cvz-primary { background: var(--cpos-accent, #b794ff); color: var(--cpos-bg, #14141f); border-color: var(--cpos-accent, #b794ff); font-weight: 700; }
+.cvz-bar .cvz-primary:hover:not(:disabled) { filter: brightness(1.12); }
+.cvz-bar .cvz-primary:disabled { opacity: 0.6; cursor: default; }
+.cvz-flash { position: absolute; top: 10px; left: 50%; transform: translateX(-50%) translateY(-6px); z-index: 8; max-width: min(92%, 560px); background: var(--cpos-panel, #1b1b2b); color: var(--cpos-fg, #e8e6f0); border: 1px solid var(--cpos-accent, #b794ff); border-radius: 8px; padding: 8px 14px; font-size: 12px; line-height: 1.5; box-shadow: 0 6px 22px rgba(0,0,0,0.45); opacity: 0; pointer-events: none; transition: opacity 0.15s ease, transform 0.15s ease; cursor: pointer; }
+.cvz-flash.open { opacity: 1; transform: translateX(-50%) translateY(0); pointer-events: auto; }
+.cvz-flash.err { border-color: var(--cpos-bad, #ff7a93); color: var(--cpos-bad, #ff7a93); }
 .cvz-grow { flex: 1 1 auto; }
 .cvz-stage { position: relative; flex: 1 1 auto; min-height: 0; overflow: hidden; background: var(--cpos-bg, #14141f); }
 .cvz-stage svg { display: block; width: 100%; height: 100%; cursor: grab; }
@@ -1341,6 +1456,145 @@
     return { w: W, h: H, status: "<b>points</b> " + pts.length + " · x [" + xlo + ", " + xhi + "] · y [" + ylo + ", " + yhi + "]" };
   }
 
+  function renderString(scene, cand, pal, o, ui) {
+    const chars = cand.data.chars;
+    const N = chars.length;
+    if (N > 20000) return tooLarge(scene, pal, "string of length " + N);
+    const isBracket = cand.data.isBracket;
+    const dispIdx = (i) => i + (o.base === 0 ? 0 : 1);
+
+    // bracket matching: pair positions, nesting depth, unmatched marks
+    const OPEN = { "(": ")", "[": "]", "{": "}" };
+    const CLOSE = { ")": "(", "]": "[", "}": "{" };
+    let match = null, depth = null, pairs = 0, maxDepth = 0, unmatched = 0;
+    if (isBracket) {
+      match = new Array(N).fill(-1);
+      depth = new Array(N).fill(0);
+      const stack = [];
+      for (let i = 0; i < N; i++) {
+        const ch = chars[i];
+        if (OPEN[ch]) {
+          stack.push(i);
+          depth[i] = stack.length;
+          maxDepth = Math.max(maxDepth, stack.length);
+        } else if (CLOSE[ch] && stack.length && chars[stack[stack.length - 1]] === CLOSE[ch]) {
+          const j = stack.pop();
+          match[i] = j;
+          match[j] = i;
+          depth[i] = depth[j];
+          pairs++;
+        }
+      }
+      for (let i = 0; i < N; i++) if ("()[]{}".includes(chars[i]) && match[i] === -1) unmatched++;
+    }
+
+    const strip = N <= 400;
+    const cs = strip ? clamp(Math.floor(920 / N), 12, 30) : 16;
+    const perRow = strip ? N : Math.max(1, Math.floor(920 / cs));
+    const rowsCount = Math.ceil(N / perRow);
+    const drawArcs = isBracket && strip && N <= 240;
+    const arcRoom = drawArcs ? clamp(N * cs * 0.14, 36, 170) : 0;
+    const ox = 30, oy = 32 + arcRoom;
+    const handles = { cells: new Map() };
+    for (let i = 0; i < N; i++) {
+      const ri = Math.floor(i / perRow), ci = i % perRow;
+      const x = ox + ci * cs, y = oy + ri * (cs + 14);
+      const ch = chars[i];
+      let fill, unmatchedHere = false;
+      if (isBracket) {
+        if ("()[]{}".includes(ch) && match[i] === -1) { fill = pal.bad; unmatchedHere = true; }
+        else if (depth[i] > 0) fill = cycHue((depth[i] - 1) * 2);
+        else fill = null;
+      } else {
+        fill = charColor(ch, pal);
+      }
+      const rect = svgEl("rect", { x, y, width: cs - 2, height: cs - 2, rx: 3, fill: fill || pal.panel2, "fill-opacity": fill ? (unmatchedHere ? 0.9 : 0.55) : 0.7, stroke: pal.border, "stroke-width": 0.7 });
+      scene.appendChild(rect);
+      let textEl = null;
+      if (cs >= 11) {
+        textEl = svgEl("text", { x: x + (cs - 2) / 2, y: y + (cs - 2) / 2, dy: "0.34em", "text-anchor": "middle", "font-size": Math.floor(cs * 0.62), fill: pal.fg, "font-weight": 600, "font-family": "ui-monospace, Menlo, Consolas, monospace" });
+        textEl.textContent = ch;
+        scene.appendChild(textEl);
+      }
+      const stepIdx = Math.max(1, Math.ceil(perRow / 30));
+      if (ci % stepIdx === 0) {
+        const idx = svgEl("text", { x: x + (cs - 2) / 2, y: y - 4, "text-anchor": "middle", "font-size": 9, fill: pal.dim, "font-family": "ui-monospace, Menlo, Consolas, monospace" });
+        idx.textContent = String(dispIdx(i));
+        scene.appendChild(idx);
+      }
+      handles.cells.set(String(dispIdx(i)), { el: rect, textEl });
+      rect.addEventListener("pointerenter", () => {
+        let tip = "s[" + dispIdx(i) + "] = '" + ch + "'";
+        if (isBracket) {
+          if (match && match[i] >= 0) tip += "\nmatches s[" + dispIdx(match[i]) + "] · depth " + depth[i];
+          else if ("()[]{}".includes(ch)) tip += "\nunmatched";
+        }
+        ui.tip(tip);
+      });
+      rect.addEventListener("pointerleave", () => ui.tip(null));
+    }
+    if (drawArcs) {
+      for (let i = 0; i < N; i++) {
+        if (match[i] <= i) continue; // draw once per pair, from the open bracket
+        const j = match[i];
+        const x1 = ox + i * cs + (cs - 2) / 2, x2 = ox + j * cs + (cs - 2) / 2;
+        const y0 = oy - 12;
+        const lift = clamp((x2 - x1) * 0.3, 10, arcRoom - 6);
+        scene.appendChild(svgEl("path", {
+          d: "M " + x1 + " " + y0 + " Q " + ((x1 + x2) / 2) + " " + (y0 - lift) + " " + x2 + " " + y0,
+          fill: "none", stroke: cycHue((depth[i] - 1) * 2), "stroke-width": 1.6, "stroke-opacity": 0.85
+        }));
+      }
+    }
+    const status = isBracket
+      ? "<b>bracket string</b> n=" + N + " · <b>" + pairs + "</b> matched pairs · " + (unmatched ? "<span class=\"cvz-warn\">" + unmatched + " unmatched</span>" : "0 unmatched") + " · depth " + maxDepth
+      : "<b>string</b> n=" + N;
+    return { w: ox * 2 + Math.min(N, perRow) * cs, h: oy + rowsCount * (cs + 14) + 16, status, handles };
+  }
+
+  function renderStrings(scene, cand, pal, o, ui) {
+    const list = cand.data.list;
+    const total = list.reduce((a, s) => a + s.length, 0);
+    if (total > 40000) return tooLarge(scene, pal, list.length + " strings, " + total + " chars");
+    const maxLen = Math.max(...list.map((s) => s.length), 1);
+    const cs = clamp(Math.floor(880 / maxLen), 8, 26);
+    const ox = 52, oy = 30;
+    const rowH = cs + 12;
+    const handles = { cells: new Map() };
+    const stepIdx = Math.max(1, Math.ceil(maxLen / 30));
+    for (let j = 0; j < maxLen; j += stepIdx) {
+      const idx = svgEl("text", { x: ox + j * cs + (cs - 2) / 2, y: oy - 8, "text-anchor": "middle", "font-size": 9, fill: pal.dim, "font-family": "ui-monospace, Menlo, Consolas, monospace" });
+      idx.textContent = String(j + 1);
+      scene.appendChild(idx);
+    }
+    list.forEach((chars, r) => {
+      const y = oy + r * rowH;
+      const lab = svgEl("text", { x: ox - 10, y: y + (cs - 2) / 2, dy: "0.34em", "text-anchor": "end", "font-size": Math.min(11, cs), fill: pal.dim, "font-family": "ui-monospace, Menlo, Consolas, monospace" });
+      lab.textContent = "s" + (r + 1);
+      scene.appendChild(lab);
+      chars.forEach((ch, j) => {
+        const x = ox + j * cs;
+        const fill = charColor(ch, pal);
+        const rect = svgEl("rect", { x, y, width: cs - 2, height: cs - 2, rx: 3, fill: fill || pal.panel2, "fill-opacity": fill ? 0.55 : 0.7, stroke: pal.border, "stroke-width": 0.7 });
+        scene.appendChild(rect);
+        let textEl = null;
+        if (cs >= 11) {
+          textEl = svgEl("text", { x: x + (cs - 2) / 2, y: y + (cs - 2) / 2, dy: "0.34em", "text-anchor": "middle", "font-size": Math.floor(cs * 0.62), fill: pal.fg, "font-weight": 600, "font-family": "ui-monospace, Menlo, Consolas, monospace" });
+          textEl.textContent = ch;
+          scene.appendChild(textEl);
+        }
+        handles.cells.set((r + 1) + ":" + (j + 1), { el: rect, textEl });
+        rect.addEventListener("pointerenter", () => ui.tip("s" + (r + 1) + "[" + (j + 1) + "] = '" + ch + "'"));
+        rect.addEventListener("pointerleave", () => ui.tip(null));
+      });
+    });
+    return {
+      w: ox + maxLen * cs + 30, h: oy + list.length * rowH + 16,
+      status: "<b>" + list.length + " strings</b> · lengths " + list.map((s) => s.length).join(", ").slice(0, 60),
+      handles
+    };
+  }
+
   function renderTokens(scene, cand, pal, o, ui) {
     const rows = cand.data.lines.slice(0, 400);
     const raw = cand.data.raw;
@@ -1387,6 +1641,8 @@
     matrix: renderMatrix,
     array: renderArray,
     perm: renderArray,
+    string: renderString,
+    strings: renderStrings,
     intervals: renderIntervals,
     points: renderPoints,
     tokens: renderTokens
@@ -1394,7 +1650,7 @@
 
   const TYPE_LABELS = {
     auto: "Auto", graph: "Graph", tree: "Tree", grid: "Grid", matrix: "Matrix",
-    array: "Array", perm: "Permutation", intervals: "Intervals", points: "Points", tokens: "Tokens"
+    array: "Array", perm: "Permutation", string: "String", strings: "Strings", intervals: "Intervals", points: "Points", tokens: "Tokens"
   };
 
   // ---- execution trace (#cpos stderr bus) -------------------------------------------
@@ -1437,13 +1693,16 @@
   const TRACE_HELP =
     "Animate YOUR code on this sample: print trace lines to stderr while it runs.\n" +
     "The runner captures stderr locally; judges never see it.\n\n" +
-    "#cpos visit u        highlight node/index u\n" +
+    "#cpos visit u        highlight node / array index / string position u\n" +
     "#cpos visit r c      highlight grid cell (row col, 1-based)\n" +
-    "#cpos set i v        write v into array cell i\n" +
+    "#cpos set i v        write v into array/string cell i\n" +
     "#cpos cell r c v     write v into a grid/matrix cell\n" +
     "#cpos edge u v       highlight edge u-v\n" +
     "#cpos frame          end an animation frame\n" +
-    "#cpos clear          reset highlights";
+    "#cpos clear          reset highlights\n\n" +
+    "Keyboard (click the drawing first):\n" +
+    "[ ]  prev/next sample     { }  prev/next case\n" +
+    "space  play/pause trace   , .  step trace   r  run   f  re-fit";
   const TRACE_MACRO_CPP = '#define VIZ(...) do{fprintf(stderr,"#cpos " __VA_ARGS__);fputc(\'\\n\',stderr);}while(0)\n// VIZ("visit %d",u); VIZ("cell %d %d %lld",r,c,dp[r][c]); VIZ("frame");';
   const TRACE_MACRO_PY = 'import sys\nviz = lambda *a: print("#cpos", *a, file=sys.stderr)\n# viz("visit", u); viz("set", i, dp[i]); viz("frame")';
 
@@ -1499,7 +1758,7 @@
     caseSel.style.display = "none";
     const typeSel = document.createElement("select");
     typeSel.title = "Structure type (Auto infers it)";
-    const runBtn = domEl("button", "cvz-ic", "▶ RUN");
+    const runBtn = domEl("button", "cvz-ic cvz-primary", "▶ RUN");
     runBtn.title = "Run your code on this sample and animate its #cpos stderr trace (press ? for the grammar)";
     if (!opts.runTrace) runBtn.style.display = "none";
     const helpBtn = domEl("button", "cvz-ic", "?");
@@ -1543,6 +1802,19 @@
     stage.appendChild(svg);
     stage.appendChild(tipEl);
     stage.appendChild(emptyEl);
+
+    // Loud, on-canvas feedback — errors must never hide in the status strip.
+    const flashEl = domEl("div", "cvz-flash");
+    stage.appendChild(flashEl);
+    let flashTimer = null;
+    function flash(msg, isErr) {
+      flashEl.textContent = msg;
+      flashEl.classList.toggle("err", !!isErr);
+      flashEl.classList.add("open");
+      clearTimeout(flashTimer);
+      flashTimer = setTimeout(() => flashEl.classList.remove("open"), isErr ? 9000 : 3500);
+    }
+    flashEl.addEventListener("click", () => flashEl.classList.remove("open"));
 
     // options popover
     const pop = domEl("div", "cvz-opts");
@@ -1841,18 +2113,33 @@
       const prevLabel = runBtn.textContent;
       runBtn.textContent = "…";
       status.innerHTML = "compiling + running your code on this sample…";
+      flash("Compiling + running your code…");
       try {
-        const res = await opts.runTrace(currentRaw());
+        // When a specific case of a multi-test input is shown, run exactly that
+        // case (re-headed with t=1) so trace indices match the drawing.
+        let runInput = currentRaw();
+        if (state.seg && state.caseIdx >= 1) {
+          const lines = splitLines(currentRaw());
+          const c = state.seg.cases[state.caseIdx - 1];
+          runInput = "1\n" + lines.slice(c.from, c.to).join("\n") + "\n";
+        }
+        const res = await opts.runTrace(runInput);
         const verdict = res && res.verdict ? String(res.verdict) : "";
         const nFrames = loadTrace(res && res.stderr, true);
         if (!nFrames) {
-          status.innerHTML = '<span class="cvz-warn">run finished' + (verdict ? " (" + verdict + ")" : "")
-            + " — no #cpos lines on stderr. Press ? and drop the 2-line macro into your code.</span>";
+          const msg = "Run finished" + (verdict ? " (" + verdict + ")" : "")
+            + " — but your code printed no #cpos lines to stderr, so there is nothing to animate. "
+            + "Press ? and paste the 2-line macro, then emit e.g. #cpos visit i from your loops.";
+          status.innerHTML = '<span class="cvz-warn">no #cpos trace in the run' + (verdict ? " (" + verdict + ")" : "") + "</span>";
+          flash(msg, true);
         } else {
           status.innerHTML = "<b>trace</b> " + nFrames + " frames" + (verdict ? " · verdict " + verdict : "") + " — playing (scrub below)";
+          flash("Trace loaded: " + nFrames + " frames" + (verdict ? " · verdict " + verdict : ""));
         }
       } catch (err) {
-        status.innerHTML = '<span class="cvz-warn">' + String(err && err.message ? err.message : err).replace(/</g, "&lt;") + "</span>";
+        const msg = String(err && err.message ? err.message : err);
+        status.innerHTML = '<span class="cvz-warn">' + msg.replace(/</g, "&lt;") + "</span>";
+        flash(msg, true);
       } finally {
         runBtn.disabled = false;
         runBtn.textContent = prevLabel;
@@ -1919,7 +2206,7 @@
       typeSel.appendChild(auto);
       const present = new Set();
       for (const c of cands) present.add(c.type);
-      for (const t of ["graph", "tree", "grid", "matrix", "array", "perm", "intervals", "points", "tokens"]) {
+      for (const t of ["graph", "tree", "grid", "matrix", "array", "perm", "string", "strings", "intervals", "points", "tokens"]) {
         const o = document.createElement("option");
         o.value = t;
         o.textContent = TYPE_LABELS[t] + (present.has(t) ? " ✓" : "");
@@ -1953,8 +2240,14 @@
       lastCand = cand;
       dotBtn.style.display = cand.type === "graph" || cand.type === "tree" ? "" : "none";
       const pal = resolvePalette(container);
+      // Functional graphs and other inherently directed inputs get arrows by
+      // default; a user toggle always wins once touched.
+      const autoDirected = !!(cand.data && cand.data.directed);
+      const effDirected = state.directedTouched ? state.directed : (state.directed || autoDirected);
+      const dirBox = pop.querySelector("input[data-k=directed]");
+      if (dirBox) dirBox.checked = effDirected;
       const o = {
-        directed: state.directed, weights: state.weights, heat: state.heat,
+        directed: effDirected, weights: state.weights, heat: state.heat,
         bars: state.bars, base: state.base != null ? state.base : (cand.data && cand.data.base != null ? cand.data.base : 1),
         root: state.root, forceLayout: state.type === "graph" && cand.type === "tree"
       };
@@ -2052,7 +2345,9 @@
     });
     pop.querySelectorAll("input[type=checkbox]").forEach((inp) => {
       inp.addEventListener("change", () => {
-        state[inp.getAttribute("data-k")] = inp.checked;
+        const k = inp.getAttribute("data-k");
+        state[k] = inp.checked;
+        if (k === "directed") state.directedTouched = true;
         rerender();
       });
     });
@@ -2088,6 +2383,46 @@
         dotBtn.textContent = "✓";
         setTimeout(() => { dotBtn.textContent = "DOT"; }, 900);
       } catch (_) { /* clipboard denied */ }
+    });
+
+    // -- keyboard macros --------------------------------------------------------
+    // [ ] switch sample · { } switch case · space play/pause · , . step · f fit
+    container.tabIndex = -1;
+    container.style.outline = "none";
+    stage.addEventListener("pointerdown", () => container.focus({ preventScroll: true }));
+    function setSample(i) {
+      if (!state.tests.length) return;
+      i = ((i % state.tests.length) + state.tests.length) % state.tests.length;
+      state.si = i;
+      sampleSel.value = String(i);
+      state.caseIdx = 0;
+      reparse();
+    }
+    function setCase(k) {
+      if (!state.seg) return;
+      k = ((k - 1 + state.seg.t) % state.seg.t) + 1;
+      state.caseIdx = k;
+      caseSel.value = String(k);
+      state.root = null;
+      rerender();
+    }
+    container.addEventListener("keydown", (e) => {
+      const tag = e.target && e.target.tagName;
+      if (tag === "TEXTAREA" || tag === "INPUT" || tag === "SELECT") return;
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      switch (e.key) {
+        case "[": setSample((state.si < 0 ? 0 : state.si) - 1); break;
+        case "]": setSample((state.si < 0 ? -1 : state.si) + 1); break;
+        case "{": setCase(state.caseIdx - 1); break;
+        case "}": setCase(state.caseIdx + 1); break;
+        case " ": if (trace) { if (trace.timer) stopPlay(); else startPlay(); } break;
+        case ",": if (trace) { stopPlay(); traceSeek(trace.cur - 1); } break;
+        case ".": if (trace) { stopPlay(); traceSeek(trace.cur + 1); } break;
+        case "f": rerender(); break;
+        case "r": if (opts.runTrace && !runBtn.disabled) runBtn.click(); break;
+        default: return;
+      }
+      e.preventDefault();
     });
 
     // Re-fit when the panel/tab is resized.
