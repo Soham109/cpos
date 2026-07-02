@@ -111,6 +111,18 @@
                 "https://codeforces.com/problemset/problem/*",
                 "https://codeforces.com/contest/*/problem/*",
                 "https://codeforces.com/gym/*/problem/*",
+                "https://cses.fi/problemset/task/*",
+                "https://atcoder.jp/contests/*/tasks/*"
+            ],
+            "js": ["cpos-config.js", "themes.js", "viz-core.js", "viz.js"],
+            "css": ["viz.css"],
+            "run_at": "document_idle"
+        },
+        {
+            "matches": [
+                "https://codeforces.com/problemset/problem/*",
+                "https://codeforces.com/contest/*/problem/*",
+                "https://codeforces.com/gym/*/problem/*",
                 "https://codeforces.com/blog/entry/*",
                 "https://cses.fi/problemset/task/*"
             ],

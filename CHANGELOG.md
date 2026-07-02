@@ -15,6 +15,10 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## Unreleased
 
+### Added
+- **Sample structure visualizer (browser companions + VS Code).** A new ◈ VIZ slide-in panel on Codeforces, CSES and AtCoder problem pages — and a `CPOS: Visualize Samples` editor tab in VS Code (plus a Visualize button in the panel) — that auto-detects what a sample input actually is and draws it: graphs and trees (force/tidy layouts, weights, re-rooting, node values colored — e.g. marked vertices drawn red), parent arrays, grids and mazes, matrices with value heatmaps, arrays, permutations with cycle arcs, intervals and 2D point sets. Handles multi-testcase inputs (per-case selector), auxiliary value lines, trailing query lines, input vs expected-output views, manual type/indexing overrides, live-editable input, pan/zoom/drag, and SVG / Graphviz DOT export.
+- **Execution trace player.** The visualizer can run *your* code on the shown sample through the local CPOS runner and animate its execution on the drawing: print `#cpos visit u` / `#cpos set i v` / `#cpos cell r c v` / `#cpos edge u v` / `#cpos frame` lines to stderr (2-line macro provided in the panel's ? help) and scrub your own BFS/DFS/DP frame by frame — in the browser it runs the in-browser editor's code, in VS Code the active solution file.
+
 ## Browser companions 0.15.4 — 2026-06-29
 
 ### Added

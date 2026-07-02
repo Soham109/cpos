@@ -72,6 +72,7 @@ let status: vscode.StatusBarItem | undefined;
 let lastProblem: ProblemMeta | undefined;
 let actionsProvider: CposActionsProvider | undefined;
 let extContext: vscode.ExtensionContext | undefined;
+let vizPanel: vscode.WebviewPanel | undefined;
 
 const PANEL_THEME_KEY = "cpos.panelTheme";
 
@@ -155,6 +156,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
     }),
     vscode.commands.registerCommand("cpos.submitActiveFile", submitActiveFile),
     vscode.commands.registerCommand("cpos.openProblem", openProblem),
+    vscode.commands.registerCommand("cpos.visualizeSamples", openVisualizer),
     vscode.commands.registerCommand("cpos.focusPanel", () => {
       void vscode.commands.executeCommand("cpos.actions.focus");
     }),
@@ -738,6 +740,7 @@ async function captureProblem(problem: CapturedProblem): Promise<{ meta: Problem
   }
 
   refreshActions();
+  void refreshVisualizer();
   const detail = attachToActive
     ? `${tests.length} sample(s) → ${path.basename(solutionPath)}`
     : `${tests.length} sample(s)`;
@@ -2096,6 +2099,196 @@ function walkForVideoRenderers(obj: unknown, max: number): SolutionVideo[] {
   return results;
 }
 
+// ---------------------------------------------------------------------------
+// Sample visualizer — a full editor-tab webview that draws the captured sample
+// tests as the structure they are (graph/tree/grid/matrix/array/permutation/
+// intervals/points). All parsing and drawing lives in media/viz-core.js, the
+// same engine the browser companions ship; this side only feeds it data.
+
+function vizNonce(): string {
+  let text = "";
+  const possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+  for (let i = 0; i < 32; i++) text += possible.charAt(Math.floor(Math.random() * possible.length));
+  return text;
+}
+
+function stripHtml(html: string): string {
+  return html
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<[^>]+>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/\s+/g, " ")
+    .slice(0, 20000);
+}
+
+async function vizData(): Promise<{ tests: TestCase[]; label: string; statement: string }> {
+  const source = await activeSolutionPath();
+  const tests = source ? await loadSamples(source) : [];
+  const meta = await loadProblemMeta();
+  const matches = meta && source && meta.solutionPath === source;
+  const label = matches && meta ? meta.id : source ? path.parse(source).name : "";
+  const statement = matches && meta?.statementHtml ? stripHtml(meta.statementHtml) : "";
+  return { tests, label, statement };
+}
+
+async function postVizData(): Promise<void> {
+  if (!vizPanel) return;
+  const { tests, label, statement } = await vizData();
+  vizPanel.title = label ? `Viz · ${label}` : "CPOS Visualizer";
+  void vizPanel.webview.postMessage({ type: "setData", tests, label, statement });
+}
+
+async function refreshVisualizer(): Promise<void> {
+  if (vizPanel) await postVizData();
+}
+
+// Run the active solution file on one sample input and hand its stderr back to
+// the visualizer webview, which animates any #cpos trace lines it contains.
+async function runTraceForViz(id: number, input: string): Promise<void> {
+  const reply = (payload: { stderr?: string; verdict?: string; actual?: string; error?: string }) => {
+    void vizPanel?.webview.postMessage({ type: "traceResult", id, ...payload });
+  };
+  try {
+    const source = await activeSolutionPath();
+    if (!source) {
+      reply({ error: "No solution file — open your solution in the editor first." });
+      return;
+    }
+    const code = await fs.readFile(source, "utf8");
+    if (!code.trim()) {
+      reply({ error: `${path.basename(source)} is empty — write your solution first.` });
+      return;
+    }
+    const results = await runCodeAgainstTests(code, languageForFile(source), [{ input, expected: "" }]);
+    const r = results[0];
+    if (!r) {
+      reply({ error: "The runner returned no result." });
+      return;
+    }
+    if (r.verdict === "CE") {
+      reply({ error: "Compile error — run the samples in the CPOS panel to see the full message." });
+      return;
+    }
+    reply({ stderr: r.stderr ?? "", verdict: r.verdict, actual: r.actual });
+  } catch (error) {
+    reply({ error: error instanceof Error ? error.message : String(error) });
+  }
+}
+
+async function openVisualizer(): Promise<void> {
+  if (vizPanel) {
+    vizPanel.reveal(undefined, true);
+    await postVizData();
+    return;
+  }
+  if (!extContext) return;
+  const extensionUri = extContext.extensionUri;
+  vizPanel = vscode.window.createWebviewPanel(
+    "cpos.visualizer",
+    "CPOS Visualizer",
+    { viewColumn: vscode.ViewColumn.Beside, preserveFocus: false },
+    {
+      enableScripts: true,
+      retainContextWhenHidden: true,
+      localResourceRoots: [extensionUri]
+    }
+  );
+  vizPanel.onDidDispose(() => {
+    vizPanel = undefined;
+  });
+  vizPanel.webview.onDidReceiveMessage((message: { type?: string; id?: number; input?: string }) => {
+    if (message?.type === "ready") void postVizData();
+    if (message?.type === "runTrace") void runTraceForViz(message.id ?? 0, message.input ?? "");
+  });
+  extContext.subscriptions.push(
+    vscode.window.onDidChangeActiveColorTheme(() => {
+      void vizPanel?.webview.postMessage({ type: "repaint" });
+    })
+  );
+  const coreUri = vizPanel.webview.asWebviewUri(
+    vscode.Uri.joinPath(extensionUri, "media", "viz-core.js")
+  );
+  const nonce = vizNonce();
+  const csp = vizPanel.webview.cspSource;
+  vizPanel.webview.html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${csp} data:; style-src ${csp} 'unsafe-inline'; script-src 'nonce-${nonce}';">
+<style>
+  html, body { height: 100%; margin: 0; padding: 0; }
+  body {
+    /* Map the CPOS palette onto the live VS Code theme so the drawing always
+       matches the editor. viz-core.js reads these vars at render time. */
+    --cpos-bg: var(--vscode-editor-background, #14141f);
+    --cpos-panel: var(--vscode-sideBar-background, var(--vscode-editor-background, #1b1b2b));
+    --cpos-panel-2: var(--vscode-editorWidget-background, #232334);
+    --cpos-fg: var(--vscode-editor-foreground, #e8e6f0);
+    --cpos-dim: var(--vscode-descriptionForeground, #8b88a0);
+    --cpos-border: var(--vscode-editorWidget-border, var(--vscode-panel-border, #2a2a3e));
+    --cpos-accent: var(--vscode-textLink-foreground, #b794ff);
+    --cpos-ok: var(--vscode-testing-iconPassed, #7ee787);
+    --cpos-bad: var(--vscode-testing-iconFailed, #ff7a93);
+    --cpos-warn: var(--vscode-editorWarning-foreground, #f0c060);
+    background: var(--cpos-bg);
+  }
+  #root { height: 100vh; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script nonce="${nonce}" src="${coreUri}"></script>
+<script nonce="${nonce}">
+  (function () {
+    const vscode = acquireVsCodeApi();
+    const root = document.getElementById("root");
+    let ctl = null;
+    let traceSeq = 0;
+    const pendingTraces = new Map();
+    function runTrace(input) {
+      return new Promise((resolve, reject) => {
+        const id = ++traceSeq;
+        pendingTraces.set(id, { resolve, reject });
+        vscode.postMessage({ type: "runTrace", id, input });
+        setTimeout(() => {
+          if (pendingTraces.has(id)) {
+            pendingTraces.delete(id);
+            reject(new Error("run timed out"));
+          }
+        }, 60000);
+      });
+    }
+    window.addEventListener("message", (event) => {
+      const msg = event.data || {};
+      if (msg.type === "setData") {
+        if (!ctl) {
+          ctl = CPOS_VIZ.mount(root, {
+            tests: msg.tests,
+            problemLabel: msg.label,
+            statementText: msg.statement,
+            runTrace
+          });
+        } else {
+          ctl.setTests(msg.tests, { problemLabel: msg.label, statementText: msg.statement });
+        }
+      } else if (msg.type === "repaint" && ctl) {
+        ctl.repaint();
+      } else if (msg.type === "traceResult") {
+        const pending = pendingTraces.get(msg.id);
+        if (!pending) return;
+        pendingTraces.delete(msg.id);
+        if (msg.error) pending.reject(new Error(msg.error));
+        else pending.resolve({ stderr: msg.stderr, verdict: msg.verdict, actual: msg.actual });
+      }
+    });
+    vscode.postMessage({ type: "ready" });
+  })();
+</script>
+</body>
+</html>`;
+}
+
 class CposActionsProvider implements vscode.WebviewViewProvider {
   private view?: vscode.WebviewView;
 
@@ -2204,6 +2397,9 @@ class CposActionsProvider implements vscode.WebviewViewProvider {
         break;
       case "submit":
         await submitActiveFile();
+        break;
+      case "viz":
+        await openVisualizer();
         break;
       case "openProblem":
         await openProblem();
@@ -2608,6 +2804,7 @@ class CposActionsProvider implements vscode.WebviewViewProvider {
   }
 
   .actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin-bottom: 0; }
+  button.viz-action { grid-column: 1 / -1; }
   button {
     font-family: var(--mono);
     font-size: 11px;
@@ -3797,6 +3994,7 @@ class CposActionsProvider implements vscode.WebviewViewProvider {
     return '<div class="actions">'
       + '<button class="primary" data-act="run" ' + (state.running ? "disabled" : "") + '>' + runLabel + '</button>'
       + '<button class="submit-action" data-act="submit">Submit</button>'
+      + '<button class="viz-action" data-act="viz" title="Draw the samples as the structure they are — graph, tree, grid, array…">Visualize</button>'
       + '</div>';
   }
 

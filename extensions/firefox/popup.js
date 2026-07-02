@@ -11,7 +11,7 @@
   const DEFAULTS = {
     "cpos.ui.theme": T.DEFAULT_THEME,
     "cpos.ui.customAccent": "#b794ff",
-    "cpos.features": { profile: true, carrot: true, highlight: true, ide: true, problemTools: true, problemsetTools: true, standingsTools: true, contestReminders: true, dailyProblem: true, favorites: true, problemTimer: true, profileCompare: true, annotate: false, draw: false, modernize: true, siteTheme: false },
+    "cpos.features": { profile: true, carrot: true, highlight: true, ide: true, viz: true, problemTools: true, problemsetTools: true, standingsTools: true, contestReminders: true, dailyProblem: true, favorites: true, problemTimer: true, profileCompare: true, annotate: false, draw: false, modernize: true, siteTheme: false },
     "cpos.templates": {},
     "cpos.templates.dirty": {},
     "cpos.template.defaultLanguage": "cpp"
@@ -24,6 +24,7 @@
   const ICONS = {
     profile: '<path d="M2.5 13.5h11"/><path d="M4.5 13.5v-3.5"/><path d="M8 13.5v-7"/><path d="M11.5 13.5v-2"/>',
     ide: '<rect x="2.2" y="3.5" width="11.6" height="9" rx="1.6"/><path d="M2.2 6h11.6"/><path d="M6.4 8.2 5 9.9l1.4 1.7"/><path d="m9.6 8.2 1.4 1.7-1.4 1.7"/>',
+    viz: '<circle cx="4.2" cy="4.6" r="1.7"/><circle cx="11.8" cy="6.2" r="1.7"/><circle cx="6.6" cy="11.8" r="1.7"/><path d="M5.9 5 10.1 5.9"/><path d="M4.8 6.2 6 10.2"/><path d="M10.7 7.5 7.7 10.5"/>',
     highlight: '<path d="M6.2 5 3.4 8l2.8 3"/><path d="m9.8 5 2.8 3-2.8 3"/>',
     problemTools: '<path d="M8.1 2.6 3 7.7a1.3 1.3 0 0 0 0 1.8l3.5 3.5a1.3 1.3 0 0 0 1.8 0l5.1-5.1a1.2 1.2 0 0 0 .35-.95L13.6 3a1 1 0 0 0-.95-.95l-3.6-.15a1.2 1.2 0 0 0-.95.35Z"/><circle cx="10.6" cy="5.4" r=".95"/>',
     problemsetTools: '<rect x="2.4" y="2.6" width="11.2" height="10.8" rx="1.6"/><path d="M2.4 6.2h11.2"/><path d="M2.4 9.8h11.2"/><path d="M6 6.2v7.2"/>',

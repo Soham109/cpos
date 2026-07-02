@@ -16,6 +16,7 @@
     carrot: true,
     highlight: true,
     ide: true,
+    viz: true,
     problemTools: true,
     problemsetTools: true,
     standingsTools: true,

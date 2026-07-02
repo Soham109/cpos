@@ -1,0 +1,62 @@
+/* CPOS structure visualizer. Panel chrome uses --cpos-* (extension palette),
+   set inline by viz.js with safe fallbacks; the drawing surface itself is
+   styled by viz-core.js. The launch pill sits below the editor pill. */
+#cpos-viz-launch {
+  position: fixed; top: calc(50% + 104px); right: 0; transform: translateY(-50%);
+  z-index: 2147483640;
+  display: flex; flex-direction: row; align-items: center; gap: 9px;
+  background: var(--cpos-panel, #1b1b2b); color: var(--cpos-fg, #e8e6f0);
+  font: 700 11px/1 ui-monospace, Consolas, monospace;
+  border: 1px solid var(--cpos-border, #2a2a3e); border-right: none;
+  border-radius: 8px 0 0 8px; padding: 14px 7px; cursor: pointer;
+  writing-mode: vertical-rl; letter-spacing: 0.1em;
+  box-shadow: inset 2px 0 0 var(--cpos-accent, #6b7280), -2px 0 10px rgba(0,0,0,0.22);
+  transition: background 0.12s ease, color 0.12s ease, padding 0.12s ease, box-shadow 0.12s ease;
+}
+#cpos-viz-launch .lglyph { writing-mode: horizontal-tb; font-size: 12px; opacity: 0.9; }
+#cpos-viz-launch .lword { letter-spacing: 0.18em; }
+#cpos-viz-launch:hover { background: var(--cpos-accent, #6b7280); color: var(--cpos-bg, #f7f7f8); border-color: var(--cpos-accent, #6b7280); padding-right: 9px; box-shadow: inset 3px 0 0 var(--cpos-bg, #14141f), -2px 0 12px rgba(0,0,0,0.3); }
+
+#cpos-viz-panel {
+  position: fixed; top: 0; right: 0; height: 100vh; width: 560px;
+  z-index: 2147483641; display: flex; flex-direction: column;
+  background: var(--cpos-bg, #14141f); color: var(--cpos-fg, #e8e6f0);
+  border-left: 1px solid var(--cpos-border, #2a2a3e);
+  box-shadow: -6px 0 24px rgba(0,0,0,0.3);
+  transform: translateX(100%); transition: transform 0.18s ease, width 0.18s ease;
+  font-family: ui-sans-serif, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+#cpos-viz-panel.open { transform: translateX(0); }
+#cpos-viz-panel.zen { width: 100vw !important; box-shadow: none; }
+#cpos-viz-panel.zen .cpos-viz-grip { display: none; }
+#cpos-viz-panel * { box-sizing: border-box; }
+
+.cpos-viz-grip {
+  position: absolute; left: -3px; top: 0; width: 7px; height: 100%;
+  cursor: col-resize; z-index: 2; background: transparent;
+  transition: background 0.12s ease;
+}
+.cpos-viz-grip:hover { background: color-mix(in srgb, var(--cpos-accent, #6b7280) 60%, transparent); }
+
+.cpos-viz-head {
+  display: flex; align-items: center; gap: 8px; padding: 8px 12px; flex: 0 0 auto;
+  background: var(--cpos-panel, #1b1b2b);
+  border-bottom: 1px solid var(--cpos-border, #2a2a3e);
+}
+.cpos-viz-head .pid {
+  font-weight: 700; font-size: 12.5px; letter-spacing: 0.02em;
+  padding: 3px 9px; border-radius: 6px;
+  background: var(--cpos-panel-2, #232334);
+  border: 1px solid var(--cpos-border, #2a2a3e);
+}
+.cpos-viz-head .dim { color: var(--cpos-dim, #8b88a0); font-size: 11px; }
+.cpos-viz-head .grow { flex: 1 1 auto; }
+.cpos-viz-head .ic, .cpos-viz-head .x {
+  background: transparent; color: var(--cpos-fg, #e8e6f0);
+  border: 1px solid var(--cpos-border, #2a2a3e); border-radius: 6px;
+  font: 600 12px/1 ui-monospace, Consolas, monospace;
+  padding: 4px 8px; cursor: pointer;
+}
+.cpos-viz-head .ic:hover, .cpos-viz-head .x:hover { border-color: var(--cpos-accent, #6b7280); }
+
+.cpos-viz-body { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
