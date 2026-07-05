@@ -229,8 +229,8 @@ async fn run_app(
                         continue;
                     }
 
-                    if app.target_input_active {
-                        handle_target_text_input(app, key.code);
+                    if app.practice_input != app::PracticeInput::None {
+                        handle_practice_text_input(app, key.code);
                         continue;
                     }
 
@@ -572,8 +572,7 @@ fn drain_captures(app: &mut App) -> bool {
                     app.submissions
                         .sort_by(|a, b| b.submitted_at.cmp(&a.submitted_at));
                     app.compute_analytics();
-                    app.compute_recommendations();
-                    app.compute_target_plan();
+                    app.compute_practice();
                 }
                 app.cses_solved = progress.solved.into_iter().collect();
                 app.cses_attempted = progress.attempted.into_iter().collect();
@@ -1056,8 +1055,7 @@ fn handle_input(
     match app.active_tab {
         Tab::Problems => handle_problems_input(terminal, app, key),
         Tab::Config => handle_config_input(terminal, app, key),
-        Tab::Recommend => handle_recommend_input(terminal, app, key),
-        Tab::Target => handle_target_input(terminal, app, key),
+        Tab::Practice => handle_practice_input(terminal, app, key),
         Tab::Contests => handle_contests_input(terminal, app, key),
         Tab::Dashboard | Tab::Analytics => {}
     }
@@ -1092,41 +1090,34 @@ fn handle_contests_input(
     }
 }
 
-fn handle_recommend_input(
+fn handle_practice_input(
     terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
     app: &mut App,
     key: KeyCode,
 ) {
     match key {
-        KeyCode::Char('j') | KeyCode::Down => app.recommend_scroll_down(),
-        KeyCode::Char('k') | KeyCode::Up => app.recommend_scroll_up(),
-        KeyCode::Enter | KeyCode::Char('o') => {
-            if let Some(sp) = app.start_recommended() {
-                launch_started(terminal, app, sp);
-            }
-        }
-        _ => {}
-    }
-}
-
-fn handle_target_input(
-    terminal: &mut Terminal<CrosstermBackend<io::Stdout>>,
-    app: &mut App,
-    key: KeyCode,
-) {
-    match key {
-        KeyCode::Char('j') | KeyCode::Down => app.target_scroll_down(),
-        KeyCode::Char('k') | KeyCode::Up => app.target_scroll_up(),
+        KeyCode::Char('j') | KeyCode::Down => app.practice_scroll_down(),
+        KeyCode::Char('k') | KeyCode::Up => app.practice_scroll_up(),
+        // Cycle the engine mode (auto/weakness/push/refresh/redeem/explore/plan).
+        KeyCode::Char('m') | KeyCode::Tab => app.practice_cycle_mode(1),
+        KeyCode::Char('M') => app.practice_cycle_mode(-1),
         // Step the goal through CF rank milestones.
         KeyCode::Char('[') | KeyCode::Char('h') | KeyCode::Left => app.target_cycle(-1),
         KeyCode::Char(']') | KeyCode::Char('l') | KeyCode::Right => app.target_cycle(1),
+        // Freshness floor: any → last 2y → last 4y.
+        KeyCode::Char('y') => app.practice_cycle_year(),
         // Type an exact custom goal.
         KeyCode::Char('t') => {
-            app.target_input_active = true;
-            app.target_input_buf.clear();
+            app.practice_input = app::PracticeInput::Goal;
+            app.practice_input_buf.clear();
+        }
+        // Type a comma-separated tag filter.
+        KeyCode::Char('f') => {
+            app.practice_input = app::PracticeInput::Tags;
+            app.practice_input_buf = app.practice_tags.join(", ");
         }
         KeyCode::Enter | KeyCode::Char('o') => {
-            if let Some(sp) = app.start_target_step() {
+            if let Some(sp) = app.start_practice_selected() {
                 launch_started(terminal, app, sp);
             }
         }
@@ -1134,21 +1125,18 @@ fn handle_target_input(
     }
 }
 
-/// Custom-goal entry field on the Target tab.
-fn handle_target_text_input(app: &mut App, key: KeyCode) {
+/// Goal / tag-filter entry field on the Practice tab.
+fn handle_practice_text_input(app: &mut App, key: KeyCode) {
     match key {
         KeyCode::Esc => {
-            app.target_input_active = false;
-            app.target_input_buf.clear();
+            app.practice_input = app::PracticeInput::None;
+            app.practice_input_buf.clear();
         }
-        KeyCode::Enter => {
-            app.target_input_active = false;
-            app.apply_target_input();
-        }
+        KeyCode::Enter => app.apply_practice_input(),
         KeyCode::Backspace => {
-            app.target_input_buf.pop();
+            app.practice_input_buf.pop();
         }
-        KeyCode::Char(c) if c.is_ascii_digit() => app.target_input_buf.push(c),
+        KeyCode::Char(c) if !c.is_control() => app.practice_input_buf.push(c),
         _ => {}
     }
 }

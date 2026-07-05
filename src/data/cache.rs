@@ -15,6 +15,9 @@ impl Cache {
         std::fs::create_dir_all(&dir)?;
         let db_path = dir.join("cpos.db");
         let conn = Connection::open(db_path)?;
+        // The capture server thread reads this DB while syncs write it; wait
+        // briefly on locks instead of surfacing "database is locked".
+        conn.busy_timeout(std::time::Duration::from_millis(1500))?;
         let cache = Cache { conn };
         cache.init_tables()?;
         Ok(cache)

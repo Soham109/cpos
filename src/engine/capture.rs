@@ -167,6 +167,68 @@ mod tests {
     }
 }
 
+/// Build the /recommend JSON: load the persisted cache, run the central
+/// practice engine with the query's filters, serialize the report.
+fn recommend_response(query_string: &str) -> anyhow::Result<String> {
+    use crate::data::cache::Cache;
+    use crate::data::models::Platform;
+    use crate::engine::practice;
+
+    let query = practice::parse_query(query_string);
+    let cache = Cache::open()?;
+    let mut problems = cache.get_problems(Platform::Codeforces)?;
+    problems.extend(cache.get_problems(Platform::Cses)?);
+    let submissions = cache.get_all_submissions()?;
+    let contests = cache.get_contests(Platform::Codeforces)?;
+    let official = cache
+        .get_rating_history(Platform::Codeforces)?
+        .last()
+        .map(|r| r.new_rating);
+
+    let report = practice::build_report(&problems, &submissions, &contests, official, &query);
+    Ok(serde_json::json!({
+        "ok": true,
+        "summary": report.summary,
+        "recs": report.recs,
+    })
+    .to_string())
+}
+
+#[cfg(test)]
+mod recommend_tests {
+    use super::*;
+
+    /// Smoke-check the full endpoint path against the real local cache when one
+    /// exists (skips cleanly on fresh machines/CI).
+    #[test]
+    fn recommend_response_serializes_against_local_cache() {
+        let json = match recommend_response("mode=auto&count=5") {
+            Ok(j) => j,
+            Err(_) => return, // no cache on this machine
+        };
+        let v: serde_json::Value = serde_json::from_str(&json).expect("valid JSON");
+        assert_eq!(v["ok"], true);
+        assert!(v["summary"]["level"].is_number());
+        if let Some(recs) = v["recs"].as_array() {
+            for r in recs {
+                assert!(r["problem"]["id"].is_string());
+                assert!(r["reasons"].is_array());
+            }
+            eprintln!("sample recs against local cache:");
+            for r in recs.iter().take(5) {
+                eprintln!(
+                    "  {} {} [{}] {} :: {}",
+                    r["problem"]["id"], r["problem"]["name"], r["problem"]["rating"],
+                    r["year"], r["reasons"]
+                );
+            }
+            eprintln!("summary: level={} goal={} weak={:?}",
+                v["summary"]["level"], v["summary"]["goal"],
+                v["summary"]["weak_tags"].as_array().map(|a| a.iter().map(|t| t["tag"].to_string()).collect::<Vec<_>>()));
+        }
+    }
+}
+
 fn run(server: Server, tx: Sender<CaptureMsg>, pending: Arc<Mutex<Option<PendingSubmit>>>) {
     for mut request in server.incoming_requests() {
         if *request.method() == Method::Options {
@@ -175,13 +237,33 @@ fn run(server: Server, tx: Sender<CaptureMsg>, pending: Arc<Mutex<Option<Pending
         }
 
         let url = request.url().to_string();
+        // Route on the path only — /recommend carries a query string.
+        let (path, query) = match url.split_once('?') {
+            Some((p, q)) => (p.to_string(), q.to_string()),
+            None => (url.clone(), String::new()),
+        };
 
-        match (request.method(), url.as_str()) {
+        match (request.method(), path.as_str()) {
             (&Method::Get, "/health") => {
                 let _ = request.respond(json_response(
                     200,
                     r#"{"status":"ok","app":"cpos"}"#,
                 ));
+            }
+
+            // The central practice engine over HTTP — the browser companion's
+            // Recommend tab queries this. Reads the persisted cache directly on
+            // this thread (same precedent as /config reading the config file).
+            (&Method::Get, "/recommend") => {
+                let body = match recommend_response(&query) {
+                    Ok(json) => json,
+                    Err(err) => serde_json::json!({
+                        "ok": false,
+                        "error": err.to_string(),
+                    })
+                    .to_string(),
+                };
+                let _ = request.respond(json_response(200, &body));
             }
 
             (&Method::Get, "/pending-submit") => {

@@ -306,7 +306,7 @@ fn demo_app() -> App {
     app.mark_solved_problems();
     app.apply_filters();
     app.compute_analytics();
-    app.compute_recommendations();
+    app.compute_practice();
     app
 }
 
@@ -324,7 +324,7 @@ fn main() {
         (Tab::Problems, "problems"),
         (Tab::Contests, "contests"),
         (Tab::Analytics, "analytics"),
-        (Tab::Recommend, "recommend"),
+        (Tab::Practice, "practice"),
         (Tab::Config, "config"),
     ];
 

@@ -4,7 +4,7 @@ use std::sync::mpsc::{Receiver, Sender};
 use crate::data::cache::Cache;
 use crate::data::config::Config;
 use crate::data::models::*;
-use crate::engine::recommender::{self, Recommendation};
+use crate::engine::practice;
 use crate::engine::statement::{StatementBlock, StatementDocument};
 use crate::engine::weakness;
 use crate::engine::workspace;
@@ -256,19 +256,17 @@ pub enum Tab {
     Problems,
     Contests,
     Analytics,
-    Recommend,
-    Target,
+    Practice,
     Config,
 }
 
 impl Tab {
-    pub const ALL: [Tab; 7] = [
+    pub const ALL: [Tab; 6] = [
         Tab::Dashboard,
         Tab::Problems,
         Tab::Contests,
         Tab::Analytics,
-        Tab::Recommend,
-        Tab::Target,
+        Tab::Practice,
         Tab::Config,
     ];
 
@@ -278,8 +276,7 @@ impl Tab {
             Tab::Problems => "Problems",
             Tab::Contests => "Contests",
             Tab::Analytics => "Analytics",
-            Tab::Recommend => "Recommend",
-            Tab::Target => "Target",
+            Tab::Practice => "Practice",
             Tab::Config => "Config",
         }
     }
@@ -293,6 +290,14 @@ impl Tab {
         let idx = Tab::ALL.iter().position(|t| t == self).unwrap_or(0);
         Tab::ALL[(idx + Tab::ALL.len() - 1) % Tab::ALL.len()]
     }
+}
+
+/// Which text field the Practice tab is currently capturing.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PracticeInput {
+    None,
+    Goal,
+    Tags,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -374,17 +379,19 @@ pub struct App {
     pub cses_solved: std::collections::HashSet<String>,
     pub cses_attempted: std::collections::HashSet<String>,
 
-    pub recommendations: Vec<Recommendation>,
-    pub recommend_selected: usize,
+    // Practice tab — the central engine drives both this and GET /recommend.
+    pub practice: Option<practice::PracticeReport>,
+    pub practice_selected: usize,
+    pub practice_mode: practice::Mode,
+    pub practice_tags: Vec<String>,
+    pub practice_min_year: Option<i32>,
+    pub practice_input: PracticeInput,
+    pub practice_input_buf: String,
 
-    // Targeted, goal-driven plan (Target tab).
+    // Goal rating shared by the Practice header and the plan mode.
     pub target_rating: u32,
     /// False until the user picks a goal, so we can auto-default from their rating.
     pub target_user_set: bool,
-    pub target_plan: Option<crate::engine::target::TargetPlan>,
-    pub target_selected: usize,
-    pub target_input_active: bool,
-    pub target_input_buf: String,
 
     pub contests: Vec<Contest>,
     pub contest_selected: usize,
@@ -483,14 +490,15 @@ impl App {
             tag_stats: Vec::new(),
             cses_solved: std::collections::HashSet::new(),
             cses_attempted: std::collections::HashSet::new(),
-            recommendations: Vec::new(),
-            recommend_selected: 0,
+            practice: None,
+            practice_selected: 0,
+            practice_mode: practice::Mode::Auto,
+            practice_tags: Vec::new(),
+            practice_min_year: None,
+            practice_input: PracticeInput::None,
+            practice_input_buf: String::new(),
             target_rating: crate::engine::target::next_milestone_above(1200),
             target_user_set: false,
-            target_plan: None,
-            target_selected: 0,
-            target_input_active: false,
-            target_input_buf: String::new(),
             contests: Vec::new(),
             contest_selected: 0,
             status_message: "Press 'r' to sync with Codeforces and CSES".to_string(),
@@ -731,88 +739,118 @@ impl App {
         self.tag_stats = weakness::compute_tag_stats(&self.submissions, &self.problems);
     }
 
-    pub fn compute_recommendations(&mut self) {
-        let user_rating = self.rating_history.last().map(|r| r.new_rating);
-        self.recommendations = recommender::recommend_problems(
-            &self.submissions,
-            &self.problems,
-            user_rating,
-            recommender::DEFAULT_COUNT,
-        );
-        if self.recommend_selected >= self.recommendations.len() {
-            self.recommend_selected = 0;
-        }
-    }
-
-    /// (Re)build the goal-driven plan for the Target tab. Auto-picks a sensible
-    /// default goal (next rank milestone above the user's rating) until the user
-    /// chooses one explicitly.
-    pub fn compute_target_plan(&mut self) {
+    /// (Re)run the central practice engine for the current mode/filters/goal.
+    /// The same engine serves `GET /recommend` on the capture server.
+    pub fn compute_practice(&mut self) {
         use crate::engine::target;
         let user_rating = self.rating_history.last().map(|r| r.new_rating);
         if !self.target_user_set {
             let basis = user_rating.unwrap_or(target::TARGET_MIN);
             self.target_rating = target::next_milestone_above(basis);
         }
-        let plan = target::analyze_target(
-            &self.submissions,
+        let query = practice::PracticeQuery {
+            mode: self.practice_mode,
+            tags: self.practice_tags.clone(),
+            min_year: self.practice_min_year,
+            goal: Some(self.target_rating),
+            ..Default::default()
+        };
+        let report = practice::build_report(
             &self.problems,
+            &self.submissions,
+            &self.contests,
             user_rating,
-            self.target_rating,
+            &query,
         );
-        if self.target_selected >= plan.steps.len() {
-            self.target_selected = 0;
+        if self.practice_selected >= report.recs.len() {
+            self.practice_selected = 0;
         }
-        self.target_plan = Some(plan);
+        self.practice = Some(report);
     }
 
-    /// Step the goal up/down through CF rank milestones and rebuild the plan.
+    /// Cycle the practice mode (auto → weakness → push → …).
+    pub fn practice_cycle_mode(&mut self, dir: i32) {
+        self.practice_mode = if dir >= 0 {
+            self.practice_mode.next()
+        } else {
+            self.practice_mode.prev()
+        };
+        self.practice_selected = 0;
+        self.compute_practice();
+    }
+
+    /// Cycle the freshness floor: any → last 2 years → last 4 years.
+    pub fn practice_cycle_year(&mut self) {
+        use chrono::Datelike;
+        let now = chrono::Utc::now().year();
+        self.practice_min_year = match self.practice_min_year {
+            None => Some(now - 2),
+            Some(y) if y == now - 2 => Some(now - 4),
+            _ => None,
+        };
+        self.practice_selected = 0;
+        self.compute_practice();
+    }
+
+    /// Commit the text typed into the Practice tab's input field (goal or tags).
+    pub fn apply_practice_input(&mut self) {
+        match self.practice_input {
+            PracticeInput::Goal => {
+                if let Ok(rating) = self.practice_input_buf.trim().parse::<u32>() {
+                    self.set_target_rating(rating);
+                }
+            }
+            PracticeInput::Tags => {
+                self.practice_tags = self
+                    .practice_input_buf
+                    .split(',')
+                    .map(|t| t.trim().to_lowercase())
+                    .filter(|t| !t.is_empty())
+                    .collect();
+                self.practice_selected = 0;
+                self.compute_practice();
+            }
+            PracticeInput::None => {}
+        }
+        self.practice_input = PracticeInput::None;
+        self.practice_input_buf.clear();
+    }
+
+    /// Step the goal up/down through CF rank milestones and re-run the engine.
     pub fn target_cycle(&mut self, dir: i32) {
         self.target_user_set = true;
         self.target_rating = crate::engine::target::cycle_milestone(self.target_rating, dir);
-        self.target_selected = 0;
-        self.compute_target_plan();
+        self.practice_selected = 0;
+        self.compute_practice();
     }
 
-    /// Set an exact custom goal rating and rebuild the plan.
+    /// Set an exact custom goal rating and re-run the engine.
     pub fn set_target_rating(&mut self, rating: u32) {
         self.target_user_set = true;
         self.target_rating = crate::engine::target::clamp_target(rating);
-        self.target_selected = 0;
-        self.compute_target_plan();
+        self.practice_selected = 0;
+        self.compute_practice();
     }
 
-    /// Commit the custom rating typed into the Target tab's input field.
-    pub fn apply_target_input(&mut self) {
-        if let Ok(rating) = self.target_input_buf.trim().parse::<u32>() {
-            self.set_target_rating(rating);
-        }
-        self.target_input_buf.clear();
-    }
-
-    pub fn target_scroll_down(&mut self) {
-        let len = self
-            .target_plan
-            .as_ref()
-            .map(|p| p.steps.len())
-            .unwrap_or(0);
+    pub fn practice_scroll_down(&mut self) {
+        let len = self.practice.as_ref().map(|p| p.recs.len()).unwrap_or(0);
         if len > 0 {
-            self.target_selected = (self.target_selected + 1).min(len - 1);
+            self.practice_selected = (self.practice_selected + 1).min(len - 1);
         }
     }
 
-    pub fn target_scroll_up(&mut self) {
-        self.target_selected = self.target_selected.saturating_sub(1);
+    pub fn practice_scroll_up(&mut self) {
+        self.practice_selected = self.practice_selected.saturating_sub(1);
     }
 
-    /// Start the selected plan step, jumping into the Problems workflow so
-    /// test/submit target it (mirrors `start_recommended`).
-    pub fn start_target_step(&mut self) -> Option<StartedProblem> {
+    /// Start the selected practice recommendation, jumping into the Problems
+    /// workflow so test/submit target it.
+    pub fn start_practice_selected(&mut self) -> Option<StartedProblem> {
         let problem = self
-            .target_plan
+            .practice
             .as_ref()?
-            .steps
-            .get(self.target_selected)?
+            .recs
+            .get(self.practice_selected)?
             .problem
             .clone();
         self.focus_problem(&problem);
@@ -837,11 +875,11 @@ impl App {
         self.mark_solved_problems();
         self.apply_filters();
         self.compute_analytics();
-        self.compute_recommendations();
-        self.compute_target_plan();
 
+        // Contests before the engine run — freshness scoring needs their dates.
         let contests = cache.get_contests(Platform::Codeforces)?;
         self.set_contests(contests);
+        self.compute_practice();
         Ok(())
     }
 
@@ -1241,19 +1279,6 @@ impl App {
         Some(started)
     }
 
-    /// Start the currently-selected recommendation, jumping into the Problems
-    /// workflow so test/submit target it.
-    pub fn start_recommended(&mut self) -> Option<StartedProblem> {
-        let problem = self
-            .recommendations
-            .get(self.recommend_selected)?
-            .problem
-            .clone();
-        self.focus_problem(&problem);
-        self.active_tab = Tab::Problems;
-        self.start_problem_inner(problem)
-    }
-
     /// Ensure a problem is present in the list, clear filters, and select it so
     /// subsequent actions (test/submit) target it.
     fn focus_problem(&mut self, problem: &Problem) {
@@ -1283,17 +1308,6 @@ impl App {
             self.filtered_problems.insert(0, problem.clone());
             self.problem_selected = 0;
         }
-    }
-
-    pub fn recommend_scroll_down(&mut self) {
-        if !self.recommendations.is_empty() {
-            self.recommend_selected =
-                (self.recommend_selected + 1).min(self.recommendations.len() - 1);
-        }
-    }
-
-    pub fn recommend_scroll_up(&mut self) {
-        self.recommend_selected = self.recommend_selected.saturating_sub(1);
     }
 
     pub fn contest_scroll_down(&mut self) {
@@ -2106,15 +2120,14 @@ mod tests {
     }
 
     #[test]
-    fn target_defaults_to_first_rank_goal_without_rating_history() {
+    fn practice_defaults_to_first_rank_goal_without_rating_history() {
         let mut app = App::new(Config::default());
-        app.compute_target_plan();
+        app.compute_practice();
 
         assert_eq!(app.current_rating(), None);
         assert_eq!(app.target_rating, 1200);
-        assert_eq!(
-            app.target_plan.as_ref().and_then(|plan| plan.user_rating),
-            None
-        );
+        let report = app.practice.as_ref().expect("practice report");
+        assert_eq!(report.summary.goal, 1200);
+        assert_eq!(report.summary.official_rating, None);
     }
 }

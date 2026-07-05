@@ -5,6 +5,7 @@
 <link rel="stylesheet" href="popup.css" />
 <link rel="stylesheet" href="contests.css" />
 <link rel="stylesheet" href="practice.css" />
+<link rel="stylesheet" href="recommend.css" />
 </head>
 <body data-theme="light">
   <header class="hdr">
@@ -34,10 +35,19 @@
 
   <nav class="popup-nav" aria-label="CPOS popup sections">
     <button class="nav-item active" type="button" data-popup-tab="settings" aria-selected="true">Settings</button>
+    <button class="nav-item" type="button" data-popup-tab="recommend" aria-selected="false">Recommend</button>
     <button class="nav-item" type="button" data-popup-tab="compete" aria-selected="false">Compete</button>
   </nav>
 
   <main class="popup-main">
+    <section class="popup-panel" data-popup-panel="recommend">
+      <div class="panel-intro">
+        <div><span class="eyebrow">From your solve history</span><h1>Recommend</h1></div>
+        <small>The CPOS engine picks problems that teach you something.</small>
+      </div>
+      <div id="cpos-recommend-section"></div>
+    </section>
+
     <section class="popup-panel" data-popup-panel="compete">
       <div class="panel-intro">
         <div><span class="eyebrow">Codeforces races</span><h1>Compete</h1></div>
@@ -128,6 +138,7 @@
   <script src="popup.js"></script>
   <script src="contests-ui.js"></script>
   <script src="practice-ui.js"></script>
+  <script src="recommend-ui.js"></script>
   <script src="cpos-challenge-core.js"></script>
   <script src="cpos-challenge-ui.js"></script>
 </body>

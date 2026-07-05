@@ -4,7 +4,7 @@
     problems: "Browse, filter, and open complete statements with math, diagrams, and samples inside the TUI.",
     contests: "Upcoming and live Codeforces contests with countdowns.",
     analytics: "Rating graph, topic breakdown, and activity heatmap.",
-    recommend: "Unsolved problems picked around your rating and weak tags.",
+    practice: "Skill-model recommendations: weak topics, fresh problems, upsolving, and a goal roadmap.",
   };
 
   const labels = {
@@ -12,7 +12,7 @@
     problems: "Problems",
     contests: "Contests",
     analytics: "Analytics",
-    recommend: "Recommend",
+    practice: "Practice",
   };
 
   const loaded = new Set();

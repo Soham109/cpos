@@ -278,7 +278,8 @@ fn draw_up_next(frame: &mut Frame, app: &App, area: Rect) {
     let inner = block.inner(area);
     frame.render_widget(block, area);
 
-    if app.recommendations.is_empty() {
+    let recs = app.practice.as_ref().map(|r| &r.recs[..]).unwrap_or(&[]);
+    if recs.is_empty() {
         let hint = Paragraph::new("  Sync to get problems picked for your level.")
             .style(Style::default().fg(t.dim))
             .wrap(Wrap { trim: true });
@@ -287,9 +288,8 @@ fn draw_up_next(frame: &mut Frame, app: &App, area: Rect) {
     }
 
     let visible = inner.height.saturating_sub(1) as usize;
-    let total = app.recommendations.len();
-    let rows: Vec<Row> = app
-        .recommendations
+    let total = recs.len();
+    let rows: Vec<Row> = recs
         .iter()
         .take(visible)
         .map(|rec| {
@@ -317,7 +317,7 @@ fn draw_up_next(frame: &mut Frame, app: &App, area: Rect) {
 
     if total > visible {
         let hint = Paragraph::new(format!(
-            " +{} more on Recommend tab ",
+            " +{} more on Practice tab ",
             total - visible.min(total)
         ))
         .style(Style::default().fg(t.dim))

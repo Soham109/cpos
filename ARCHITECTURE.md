@@ -5,7 +5,7 @@ and submission communicate over `127.0.0.1`. The browser companion's Compete
 feature additionally uses public ntfy.sh topics for race delivery and matching;
 Codeforces public submissions act as the referee.
 
-**Current releases:** terminal app 0.2.2 · VS Code extension 0.6.1 · browser companion 0.16.0 (Chrome + Firefox) (see [CHANGELOG.md](CHANGELOG.md)).
+**Current releases:** terminal app 0.3.0 · VS Code extension 0.6.1 · browser companion 0.17.0 (Chrome + Firefox) (see [CHANGELOG.md](CHANGELOG.md)).
 
 ```
 ┌─────────────────┐     capture / submit      ┌──────────────────┐
@@ -51,6 +51,7 @@ The browser companion polls **both** ports so captures and submissions work whet
 | `GET` | `/config` | Read the default language and shared per-language templates |
 | `POST` | `/config` | Save a shared template or default language |
 | `GET/POST` | `/challenges` | VS Code-only mirror for Compete races, public matches, identity, and matching preferences |
+| `GET` | `/recommend` | Central practice engine (terminal app only): mode/tags/rating/year query → scored, reasoned recommendations |
 | `GET` | `/health` | Liveness check |
 
 Cross-origin headers are permissive because traffic never leaves the machine.

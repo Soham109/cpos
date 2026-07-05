@@ -152,6 +152,44 @@
     };
   }
 
+  // The element whose scrolling should carry the ink. Normally the window
+  // scrolls the statement and this is null — strokes live in document px and
+  // scroll for free. But focus/split layouts (and some judges) scroll the
+  // statement inside an inner container; ink anchored to the document would
+  // appear frozen on screen while the content moves underneath. Detect that
+  // container so strokes are stored in ITS content space and repainted on
+  // scroll, keeping them glued to what they were drawn over.
+  let scrollCtx = null;
+  function findScrollContext() {
+    const anchor =
+      document.querySelector(".problem-statement") ||
+      document.querySelector("#task-statement") ||
+      document.querySelector(".content") ||
+      document.body;
+    let el = anchor;
+    while (el && el !== document.body && el !== document.documentElement) {
+      const cs = getComputedStyle(el);
+      if (/(auto|scroll|overlay)/.test(cs.overflowY) && el.scrollHeight > el.clientHeight + 4) {
+        return el;
+      }
+      el = el.parentElement;
+    }
+    return null;
+  }
+  function refreshScrollContext() {
+    if (!scrollCtx || !scrollCtx.isConnected) scrollCtx = findScrollContext();
+  }
+
+  /// Stroke storage space → current document px (what the canvas is laid out in).
+  function toCanvasPoint(p) {
+    if (!scrollCtx || !scrollCtx.isConnected) return p;
+    const rect = scrollCtx.getBoundingClientRect();
+    return [
+      p[0] - scrollCtx.scrollLeft + rect.left + window.scrollX,
+      p[1] - scrollCtx.scrollTop + rect.top + window.scrollY
+    ];
+  }
+
   // Sit the canvas over the entire document. Stroke points are document px.
   function layoutCanvas() {
     if (!canvas) return;
@@ -167,6 +205,13 @@
   }
 
   function pointFor(e) {
+    if (scrollCtx && scrollCtx.isConnected) {
+      const rect = scrollCtx.getBoundingClientRect();
+      return [
+        e.clientX - rect.left + scrollCtx.scrollLeft,
+        e.clientY - rect.top + scrollCtx.scrollTop
+      ];
+    }
     return [e.clientX + window.scrollX, e.clientY + window.scrollY];
   }
 
@@ -180,9 +225,13 @@
     ctx.strokeStyle = colorHex(colorById(s.color));
     ctx.lineWidth = s.size || t.width;
     ctx.beginPath();
-    ctx.moveTo(s.points[0][0], s.points[0][1]);
-    for (let i = 1; i < s.points.length; i++) ctx.lineTo(s.points[i][0], s.points[i][1]);
-    if (s.points.length === 1) ctx.lineTo(s.points[0][0] + 0.01, s.points[0][1] + 0.01); // a tap = a dot
+    const p0 = toCanvasPoint(s.points[0]);
+    ctx.moveTo(p0[0], p0[1]);
+    for (let i = 1; i < s.points.length; i++) {
+      const p = toCanvasPoint(s.points[i]);
+      ctx.lineTo(p[0], p[1]);
+    }
+    if (s.points.length === 1) ctx.lineTo(p0[0] + 0.01, p0[1] + 0.01); // a tap = a dot
     ctx.stroke();
     ctx.globalAlpha = 1;
   }
@@ -194,8 +243,20 @@
     if (!ctx) return;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // Ink anchored to an inner scroller is clipped to that box, so scrolled-out
+    // strokes don't bleed over the surrounding page chrome.
+    let clipped = false;
+    if (scrollCtx && scrollCtx.isConnected) {
+      const rect = scrollCtx.getBoundingClientRect();
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(rect.left + window.scrollX, rect.top + window.scrollY, rect.width, rect.height);
+      ctx.clip();
+      clipped = true;
+    }
     for (const s of strokes) drawStroke(s);
     if (cur) drawStroke(cur);
+    if (clipped) ctx.restore();
   }
 
   // ---- pointer drawing ----------------------------------------------------
@@ -214,6 +275,7 @@
     if (activeTool !== "pen" && activeTool !== "eraser") return;
     e.preventDefault();
     try { canvas.setPointerCapture(e.pointerId); } catch (x) { /* ok */ }
+    refreshScrollContext();
     drawing = true;
     const p = pointFor(e);
     if (activeTool === "eraser") { eraseAt(p); return; }
@@ -600,6 +662,18 @@
     });
   }
 
+  // Repaint on scroll when ink is anchored to an inner scroller — its strokes
+  // move relative to the document, so the canvas must follow every frame.
+  // Window-anchored ink needs nothing (the absolute canvas scrolls natively).
+  let scrollRAF = 0;
+  function onAnyScroll() {
+    if (!scrollCtx || scrollRAF) return;
+    scrollRAF = requestAnimationFrame(() => {
+      scrollRAF = 0;
+      redraw();
+    });
+  }
+
   // ---- build / teardown ---------------------------------------------------
   function buildLayer() {
     canvas = document.createElement("canvas");
@@ -634,9 +708,12 @@
       size: s.size,
       points: Array.isArray(s.points) ? s.points : []
     }));
+    scrollCtx = findScrollContext();
     buildLayer();
     buildBar();
     window.addEventListener("resize", onResize);
+    // capture:true also catches inner containers (focus/split layouts).
+    document.addEventListener("scroll", onAnyScroll, { capture: true, passive: true });
     window.addEventListener("blur", cancelStroke);
     document.addEventListener("keydown", onKeyDown);
     document.addEventListener("mouseup", onDocMouseUp);
@@ -653,11 +730,14 @@
     if (!built) return;
     built = false;
     window.removeEventListener("resize", onResize);
+    document.removeEventListener("scroll", onAnyScroll, { capture: true });
     window.removeEventListener("blur", cancelStroke);
     document.removeEventListener("keydown", onKeyDown);
     document.removeEventListener("mouseup", onDocMouseUp);
     if (resizeObserver) { resizeObserver.disconnect(); resizeObserver = null; }
     if (resizeRAF) { cancelAnimationFrame(resizeRAF); resizeRAF = 0; }
+    if (scrollRAF) { cancelAnimationFrame(scrollRAF); scrollRAF = 0; }
+    scrollCtx = null;
     bar?.removeEventListener("pointerdown", onBarPointerDown);
     canvas?.remove(); canvas = null; ctx = null;
     bar?.remove(); bar = null;

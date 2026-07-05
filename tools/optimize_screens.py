@@ -8,7 +8,7 @@ import os
 
 from PIL import Image
 
-SCREENS = ["dashboard", "problems", "contests", "analytics", "recommend"]
+SCREENS = ["dashboard", "problems", "contests", "analytics", "practice"]
 SRC_DIR = "docs"
 OUT_DIR = "docs/img"
 DISPLAY_W = 1105

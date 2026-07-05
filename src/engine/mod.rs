@@ -1,5 +1,5 @@
 pub mod capture;
-pub mod recommender;
+pub mod practice;
 pub mod runner;
 pub mod statement;
 pub mod stress;

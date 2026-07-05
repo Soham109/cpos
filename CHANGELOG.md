@@ -4,14 +4,28 @@ All notable changes to CPOS are documented here. Components are versioned indepe
 
 | Component | Current version | Version file |
 | --- | --- | --- |
-| Terminal app | 0.2.2 | `Cargo.toml` |
+| Terminal app | 0.3.0 | `Cargo.toml` |
 | VS Code extension | 0.6.1 | `extensions/vscode/package.json` |
-| Browser companion (Chrome) | 0.16.0 | `extensions/chrome/manifest.json` |
-| Browser companion (Firefox) | 0.16.0 | `extensions/firefox/manifest.json` |
+| Browser companion (Chrome) | 0.17.0 | `extensions/chrome/manifest.json` |
+| Browser companion (Firefox) | 0.17.0 | `extensions/firefox/manifest.json` |
 
 Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
+
+## Terminal app 0.3.0 · Browser companions 0.17.0 — 2026-07-05
+
+### Added
+- **Central practice engine.** Recommendations are rebuilt from scratch around a per-tag skill model computed from your full submission history: a recency-decayed, clean-solve-weighted percentile of the ratings you've ACed per tag (solves that needed many wrong attempts count less), with attempted-but-unsolved problems tracked as explicit weaknesses. Problems are scored on learning-zone fit above your weakest relevant tag, weak-topic value, **contest freshness** (recommendations finally prefer recent problemsets over decade-old classics, with a hard year filter), popularity, and list diversity — and every recommendation carries human-readable reasons ("weak topic trees: your skill ≈1000 vs level 1300 · 2024 contest").
+- **Seven query modes**: auto, weakness, push (above your ceiling on strong tags), refresh (rusty topics), **upsolve** (problems you attempted but never got accepted), explore (untouched core topics), and plan (the goal-driven curriculum, absorbed from the old Target tab).
+- **`GET /recommend`** on the terminal app's localhost API — the same engine, queryable with mode/tags/rating-range/year/count/goal.
+- **Browser popup Recommend tab** (Chrome + Firefox): query the engine with mode, tag autocomplete, rating range, freshness and count; results show tier-colored ratings, contest year, tags, and the reasons; includes your level/goal/readiness summary and weak-tag chips. Requires the terminal app running.
+
+### Fixed
+- **Freehand drawings now stick to the content they were drawn on.** When the statement scrolls inside an inner container (problem focus / split-screen layouts), pen strokes previously stayed frozen on screen while the page moved underneath. Ink is now anchored to the actual scrolling container, repaints as it scrolls, and clips to its box.
+
+### Changed
+- **TUI: Recommend and Target tabs merged into one Practice tab** driven by the engine — mode strip (`m` cycles), goal milestones (`[`/`]`, `t` for custom), tag filter (`f`), freshness floor (`y`), with skill/readiness header and per-problem reasons.
 
 ## VS Code extension 0.6.1 — 2026-07-05
 
