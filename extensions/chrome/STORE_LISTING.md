@@ -47,6 +47,8 @@ CAPTURE & SUBMIT
 
 ON THE PROBLEM PAGE
 • In-browser editor — a CodeMirror-powered editor: run against samples with a per-test diff and custom stdin, use shared per-language templates, then submit in place
+• Sample visualizer — draws each sample as the structure it is (graph, tree, grid, matrix, array, permutation cycles, bracket/binary strings, intervals, points; multi-testcase aware), with an execution trace player that runs your code locally and animates it on the drawing
+• Recommend tab — query the local CPOS engine for problems picked from your solve history: weak topics, fresh problems, upsolving, goal roadmap (terminal app required)
 • Code & LaTeX styling for statements, editorials and comments
 • Problem focus — hide the Codeforces right rail and expand the statement for split-screen solving
 • Problem tools — rating badge, tag-hider / training mode, one-click sample copy, similar problems, and a per-problem timer
