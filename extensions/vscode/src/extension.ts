@@ -167,7 +167,10 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   context.subscriptions.push(
     vscode.window.onDidChangeActiveTextEditor(() => refreshActions()),
-    vscode.workspace.onDidSaveTextDocument(() => refreshActions())
+    vscode.workspace.onDidSaveTextDocument(() => refreshActions()),
+    vscode.workspace.onDidChangeConfiguration((event) => {
+      if (event.affectsConfiguration("cpos.showVisualizeButton")) refreshActions();
+    })
   );
 
   updateStatus();
@@ -2129,6 +2132,7 @@ type PanelState = {
   publicChallenges: PublicChallenge[];
   cf: ChallengeCf;
   tabs: PanelTabs;
+  showVizButton: boolean;
 };
 
 async function currentState(): Promise<PanelState> {
@@ -2158,7 +2162,8 @@ async function currentState(): Promise<PanelState> {
     challenges: loadChallenges(),
     publicChallenges: loadPublicChallenges(),
     cf: loadChallengeCf(),
-    tabs: loadPanelTabs()
+    tabs: loadPanelTabs(),
+    showVizButton: config().get<boolean>("showVisualizeButton", false)
   };
 }
 
@@ -4176,10 +4181,13 @@ class CposActionsProvider implements vscode.WebviewViewProvider {
 
   function actions() {
     const runLabel = state.running ? "running…" : "Run All";
+    const viz = state.showVizButton
+      ? '<button class="viz-action" data-act="viz" title="Draw the samples as the structure they are — graph, tree, grid, array…">Visualize</button>'
+      : "";
     return '<div class="actions">'
       + '<button class="primary" data-act="run" ' + (state.running ? "disabled" : "") + '>' + runLabel + '</button>'
       + '<button class="submit-action" data-act="submit">Submit</button>'
-      + '<button class="viz-action" data-act="viz" title="Draw the samples as the structure they are — graph, tree, grid, array…">Visualize</button>'
+      + viz
       + '</div>';
   }
 

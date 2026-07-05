@@ -5,13 +5,18 @@ All notable changes to CPOS are documented here. Components are versioned indepe
 | Component | Current version | Version file |
 | --- | --- | --- |
 | Terminal app | 0.2.2 | `Cargo.toml` |
-| VS Code extension | 0.6.0 | `extensions/vscode/package.json` |
+| VS Code extension | 0.6.1 | `extensions/vscode/package.json` |
 | Browser companion (Chrome) | 0.16.0 | `extensions/chrome/manifest.json` |
 | Browser companion (Firefox) | 0.16.0 | `extensions/firefox/manifest.json` |
 
 Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
+
+## VS Code extension 0.6.1 — 2026-07-05
+
+### Changed
+- **Visualize button is now opt-in.** The panel's Visualize button is hidden by default; enable it with the new `cpos.showVisualizeButton` setting. The `CPOS: Visualize Samples` command (and the full visualizer, including auto-trace) remains available from the Command Palette regardless.
 
 ## Browser companions 0.16.0 · VS Code extension 0.6.0 — 2026-07-02
 

@@ -2,7 +2,7 @@
   "name": "cpos-vscode",
   "displayName": "CPOS",
   "description": "Capture Codeforces, CSES & AtCoder problems, run sample tests, and submit — all from VS Code.",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "publisher": "sohamaggarwal",
   "license": "MIT",
   "icon": "media/icon128.png",
@@ -94,6 +94,11 @@
           "type": "number",
           "default": 27122,
           "description": "Local port used by the VS Code capture server."
+        },
+        "cpos.showVisualizeButton": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show a Visualize button in the CPOS panel that opens the sample structure visualizer in an editor tab. The 'CPOS: Visualize Samples' command is always available from the Command Palette."
         },
         "cpos.saveLocation": {
           "type": "string",
