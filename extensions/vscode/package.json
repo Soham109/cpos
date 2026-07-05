@@ -2,7 +2,7 @@
   "name": "cpos-vscode",
   "displayName": "CPOS",
   "description": "Capture Codeforces, CSES & AtCoder problems, run sample tests, and submit — all from VS Code.",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "publisher": "sohamaggarwal",
   "license": "MIT",
   "icon": "media/icon128.png",

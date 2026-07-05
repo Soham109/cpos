@@ -3141,10 +3141,12 @@ class CposActionsProvider implements vscode.WebviewViewProvider {
   .verdict.none { display: none; }
   .test-body { padding: 8px; display: flex; flex-direction: column; gap: 7px; min-height: 0; }
   .io-grid {
+    --io-rows: 3;
+    --io-box-height: 60px;
     display: grid;
     grid-template-columns: var(--io-in-pct, 68%) 6px minmax(0, 1fr);
     gap: 0;
-    align-items: stretch;
+    align-items: start;
     min-height: 0;
   }
   .io-col { min-width: 0; display: flex; flex-direction: column; }
@@ -3159,7 +3161,8 @@ class CposActionsProvider implements vscode.WebviewViewProvider {
   .io-splitter:hover, .io-splitter.dragging { background: var(--accent-dim); }
   .io-input-box, .io-exp-box {
     position: relative;
-    height: clamp(132px, calc(100vh - 365px), 300px);
+    height: var(--io-box-height);
+    max-height: 300px;
     min-height: 0;
     border-radius: 4px;
     border: 1px solid var(--border-soft);
@@ -3869,6 +3872,7 @@ class CposActionsProvider implements vscode.WebviewViewProvider {
     const expBlocks = computeOutputBlocks(expLines, outputBlockSizes && outputBlockSizes.length ? outputBlockSizes : null);
     card._expBlocks = expBlocks;
     if (expBg) expBg.innerHTML = lineRowsHtml(expLines, expBlocks, true);
+    syncIoGridRows(card);
     autoResizeTextareas(card);
   }
 
@@ -4071,6 +4075,29 @@ class CposActionsProvider implements vscode.WebviewViewProvider {
     return Math.min(max, Math.max(min, lines));
   }
 
+  function ioRowsForPair(input, expected) {
+    return Math.max(
+      textareaRows(input, 2, 18),
+      textareaRows(expected, 2, 18)
+    );
+  }
+
+  function ioBoxHeightForRows(rows) {
+    return Math.min(300, Math.max(46, Math.ceil(rows * 15.4 + 14)));
+  }
+
+  function syncIoGridRows(card) {
+    const grid = card && card.querySelector(".io-grid");
+    const inTa = card && card.querySelector("textarea.in");
+    const expTa = card && card.querySelector("textarea.exp");
+    if (!grid || !inTa || !expTa) return;
+    const rows = ioRowsForPair(inTa.value, expTa.value);
+    grid.style.setProperty("--io-rows", String(rows));
+    grid.style.setProperty("--io-box-height", ioBoxHeightForRows(rows) + "px");
+    inTa.setAttribute("rows", String(rows));
+    expTa.setAttribute("rows", String(rows));
+  }
+
   function autoResizeTextareas(root) {
     (root || document).querySelectorAll("textarea").forEach((ta) => {
       if (ta.classList.contains("in") || ta.classList.contains("exp")) {
@@ -4199,8 +4226,8 @@ class CposActionsProvider implements vscode.WebviewViewProvider {
     const collapsed = isTestCollapsed(i);
     const classes = "box test" + (cardClass ? " " + cardClass : "") + (collapsed ? " collapsed" : "");
     const got = '<div class="result-slot">' + resultHtml(r) + '</div>';
-    const inRows = textareaRows(t.input, 3, 14);
-    const expRows = textareaRows(t.expected_output, 2, 6);
+    const ioRows = ioRowsForPair(t.input, t.expected_output);
+    const ioBoxHeight = ioBoxHeightForRows(ioRows);
     const blockAttr = t.input_block_sizes && t.input_block_sizes.length
       ? ' data-block-sizes="' + t.input_block_sizes.join(",") + '"'
       : "";
@@ -4223,14 +4250,14 @@ class CposActionsProvider implements vscode.WebviewViewProvider {
       + '</div>'
       + '</div>'
       + '<div class="test-body">'
-      + '<div class="io-grid" style="--io-in-pct:' + ioSplit + '%">'
+      + '<div class="io-grid" style="--io-in-pct:' + ioSplit + '%;--io-rows:' + ioRows + ';--io-box-height:' + ioBoxHeight + 'px">'
       + '<div class="io-col io-col-input"><label>Input</label>'
       + '<div class="io-input-box"><div class="io-line-bg">' + inputLineHtml(t.input, t.expected_output, t.input_block_sizes, t.input_output_offset, t.output_block_sizes) + '</div>'
-      + '<textarea class="in" rows="' + inRows + '" spellcheck="false">' + esc(t.input) + '</textarea></div></div>'
+      + '<textarea class="in" rows="' + ioRows + '" spellcheck="false">' + esc(t.input) + '</textarea></div></div>'
       + '<div class="io-splitter" data-splitter title="Drag to resize"></div>'
       + '<div class="io-col io-col-exp"><label>Expected</label>'
       + '<div class="io-exp-box"><div class="io-exp-line-bg">' + expLineHtml(t.expected_output, t.output_block_sizes) + '</div>'
-      + '<textarea class="exp" rows="' + expRows + '" spellcheck="false">' + esc(t.expected_output) + '</textarea></div></div>'
+      + '<textarea class="exp" rows="' + ioRows + '" spellcheck="false">' + esc(t.expected_output) + '</textarea></div></div>'
       + '</div>'
       + got
       + '</div>'
