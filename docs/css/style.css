@@ -1112,11 +1112,18 @@ code {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 8px;
   min-height: 38px;
   padding: 0 13px;
   border-radius: 7px;
   font-size: 0.84rem;
   font-weight: 800;
+}
+
+.install-link svg {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
 }
 
 .install-link-secondary {

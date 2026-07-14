@@ -339,6 +339,22 @@ svg {
   margin: 24px 0 8px;
 }
 
+.h-ico {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  margin-right: 9px;
+  vertical-align: -2px;
+  color: var(--accent);
+}
+
+.doc h4 .h-ico {
+  width: 14px;
+  height: 14px;
+  margin-right: 8px;
+  vertical-align: -2px;
+}
+
 .doc h2 .anchor,
 .doc h3 .anchor {
   position: absolute;
