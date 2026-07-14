@@ -189,7 +189,6 @@ code {
   z-index: 50;
   display: flex;
   align-items: center;
-  justify-content: space-between;
   width: min(calc(100% - 28px), calc(var(--wide) + 56px));
   margin: 14px auto 0;
   padding: 10px 12px;
@@ -227,6 +226,14 @@ code {
   display: flex;
   align-items: center;
   gap: 4px;
+}
+
+.top-primary {
+  margin-left: 14px;
+}
+
+.top-actions {
+  margin-left: auto;
 }
 
 .nav-link,

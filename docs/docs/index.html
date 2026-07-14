@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CPOS Documentation — how it works, install, and reference</title>
+  <meta name="description" content="Complete CPOS documentation: architecture, installation for the terminal app, VS Code extension and browser companion, the practice engine, configuration, and troubleshooting.">
+  <meta name="theme-color" content="#08090b">
+  <link rel="icon" href="/assets/icon128.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Instrument+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/css/docs.css">
+</head>
+<body>
+
+  <header class="dtop">
+    <button class="dtop-toggle" id="nav-toggle" aria-label="Toggle navigation" aria-expanded="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M3 12h18M3 18h18"/></svg>
+    </button>
+    <a href="/" class="dtop-logo">
+      <img src="/assets/icon128.png" alt="">
+      <span>CPOS</span>
+      <span class="crumb">Docs</span>
+    </a>
+    <div class="dtop-actions">
+      <a class="dtop-link" href="https://github.com/Soham109/cpos" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 .5a12 12 0 0 0-3.79 23.39c.6.11.82-.26.82-.58v-2.03c-3.34.73-4.04-1.42-4.04-1.42-.55-1.38-1.34-1.75-1.34-1.75-1.09-.74.08-.73.08-.73 1.2.09 1.84 1.24 1.84 1.24 1.07 1.83 2.81 1.3 3.49.99.11-.78.42-1.3.76-1.6-2.66-.3-5.46-1.33-5.46-5.93 0-1.31.47-2.38 1.24-3.22-.12-.3-.54-1.52.12-3.18 0 0 1.01-.32 3.3 1.23a11.4 11.4 0 0 1 6 0c2.29-1.55 3.29-1.23 3.29-1.23.66 1.66.24 2.88.12 3.18.77.84 1.23 1.91 1.23 3.22 0 4.61-2.8 5.63-5.48 5.92.43.37.81 1.1.81 2.22v3.29c0 .32.22.7.83.58A12 12 0 0 0 12 .5Z"/></svg>
+        <span>GitHub</span>
+      </a>
+      <a class="dtop-link" href="https://discord.gg/QkdmcRKz" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.317 4.369A19.79 19.79 0 0 0 15.432 3c-.21.375-.45.88-.617 1.28a18.27 18.27 0 0 0-5.487 0A12.6 12.6 0 0 0 8.71 3 19.74 19.74 0 0 0 3.82 4.37C.733 8.95-.105 13.42.314 17.82a19.9 19.9 0 0 0 6.02 3.04c.485-.66.917-1.36 1.29-2.1-.71-.27-1.39-.6-2.03-.99.17-.13.34-.26.5-.4 3.92 1.81 8.16 1.81 12.03 0 .16.14.33.27.5.4-.64.39-1.32.72-2.03.99.37.74.8 1.44 1.29 2.1a19.88 19.88 0 0 0 6.02-3.04c.5-5.1-.84-9.53-3.5-13.45ZM8.02 15.33c-1.18 0-2.15-1.09-2.15-2.42 0-1.34.95-2.42 2.15-2.42 1.2 0 2.17 1.09 2.15 2.42 0 1.33-.95 2.42-2.15 2.42Zm7.96 0c-1.18 0-2.15-1.09-2.15-2.42 0-1.34.95-2.42 2.15-2.42 1.2 0 2.17 1.09 2.15 2.42 0 1.33-.95 2.42-2.15 2.42Z"/></svg>
+        <span>Discord</span>
+      </a>
+      <a class="dtop-cta" href="/#install">Install</a>
+    </div>
+  </header>
+
+  <div class="backdrop" id="backdrop"></div>
+
+  <div class="shell">
+    <aside class="sidebar" id="sidebar">
+      <nav aria-label="Documentation">
+        <div class="side-group">
+          <span>Getting started</span>
+          <a class="side-link" href="#overview">Overview</a>
+          <a class="side-link" href="#how-it-works">How CPOS works</a>
+          <a class="side-link" href="#installation">Installation</a>
+          <a class="side-link" href="#quick-start">Quick start</a>
+        </div>
+        <div class="side-group">
+          <span>Components</span>
+          <a class="side-link" href="#terminal">Terminal app</a>
+          <a class="side-link" href="#vscode">VS Code extension</a>
+          <a class="side-link" href="#companion">Browser companion</a>
+        </div>
+        <div class="side-group">
+          <span>Going deeper</span>
+          <a class="side-link" href="#practice-engine">Practice engine</a>
+          <a class="side-link" href="#architecture">Architecture &amp; protocol</a>
+          <a class="side-link" href="#configuration">Configuration</a>
+        </div>
+        <div class="side-group">
+          <span>Help</span>
+          <a class="side-link" href="#updating">Updating</a>
+          <a class="side-link" href="#troubleshooting">Troubleshooting</a>
+          <a class="side-link" href="#community">Community</a>
+        </div>
+      </nav>
+      <div class="side-foot">
+        <a href="/">← Back to cpos.sohamaggarwal.com</a>
+        <a href="/architecture">Interactive architecture graph</a>
+        <a href="https://github.com/Soham109/cpos/blob/main/CHANGELOG.md" target="_blank" rel="noopener">Changelog</a>
+      </div>
+    </aside>
+
+    <main class="doc">
+      <p class="doc-eyebrow">Documentation</p>
+      <h1>Everything CPOS does, and how.</h1>
+      <p class="doc-lead">
+        CPOS — the Competitive Programming Operating System — removes the copy-paste layer
+        between a judge page and your editor. Open a problem in your browser and a solution
+        file appears in your folder with the samples attached; run them with one key and
+        submit without touching the judge form. This page explains how the pieces fit
+        together, how to install them, and every setting you can reach.
+      </p>
+      <div class="chips">
+        <span class="chip">terminal <b>v0.3.0</b></span>
+        <span class="chip">vs code <b>v0.6.2</b></span>
+        <span class="chip">companion <b>v0.17.0</b></span>
+        <span class="chip">license <b>MIT</b></span>
+      </div>
+
+      <!-- ───────────────────────── Overview ───────────────────────── -->
+      <section id="overview">
+        <h2>Overview<a class="anchor" href="#overview">#</a></h2>
+        <p>
+          CPOS is three local clients that share the same files and talk to each other over
+          <code>127.0.0.1</code>. There are no accounts, no external servers, and no tracking —
+          your code, your judge sessions, and your progress data never leave your machine.
+        </p>
+        <div class="card-row">
+          <div class="card">
+            <span class="tagline">browser</span>
+            <strong>Browser companion</strong>
+            <p>Captures samples and statements from Codeforces, CSES, and AtCoder, and autofills the judge submit form in your logged-in tab. Adds optional practice and on-page tooling.</p>
+          </div>
+          <div class="card">
+            <span class="tagline">editor</span>
+            <strong>VS Code extension</strong>
+            <p>A side panel with your sample tests, Run All, Submit, and a native Statement tab. Compiles and runs locally with per-test diffs.</p>
+          </div>
+          <div class="card">
+            <span class="tagline">terminal</span>
+            <strong>Terminal app (TUI)</strong>
+            <p>A Rust terminal cockpit: problem catalog, contests, analytics, skill-model recommendations, and a goal-based practice plan.</p>
+          </div>
+        </div>
+        <p>
+          Install all three for the full experience. The browser companion is required for
+          capture and submit; the VS Code extension and the terminal app can each work
+          alone on top of it, or together — they stay in sync automatically.
+        </p>
+        <div class="note">
+          <strong>Local-first by design.</strong> Every feature runs against public judge data
+          plus a localhost API. CPOS never reads or stores your judge passwords or session
+          cookies — submitting reuses the login that already exists in your browser.
+        </div>
+      </section>
+
+      <!-- ───────────────────────── How it works ───────────────────────── -->
+      <section id="how-it-works">
+        <h2>How CPOS works<a class="anchor" href="#how-it-works">#</a></h2>
+        <p>
+          The core loop is capture → code → run → submit. Here is the whole flow from
+          opening a problem to seeing your verdict:
+        </p>
+        <ol class="steps">
+          <li>
+            <strong>Pick your folder</strong>
+            <p>Open any folder in VS Code, or let the terminal app use <code>~/cpos</code>. This is where solution files will be created.</p>
+          </li>
+          <li>
+            <strong>Open a problem in your browser</strong>
+            <p>Any Codeforces, CSES, or AtCoder problem page. Log in first if you plan to submit later.</p>
+          </li>
+          <li>
+            <strong>CPOS captures it</strong>
+            <p>The companion's content script reads the public sample inputs and outputs (and the full statement) from the page and <code>POST</code>s them to CPOS on your machine.</p>
+          </li>
+          <li>
+            <strong>A file appears</strong>
+            <p>For example <code>1971D.cpp</code>, created from your template with the sample tests attached in the panel.</p>
+          </li>
+          <li>
+            <strong>Write your solution</strong>
+            <p>In VS Code, in the in-browser editor, or in a terminal editor launched from the TUI.</p>
+          </li>
+          <li>
+            <strong>Run samples</strong>
+            <p><em>Run All</em> in the panel or <kbd>T</kbd> in the terminal — CPOS compiles locally and diffs each sample's output.</p>
+          </li>
+          <li>
+            <strong>Submit</strong>
+            <p>CPOS queues your code and the companion autofills the judge's submit form in your existing logged-in tab, picking the newest matching compiler.</p>
+          </li>
+        </ol>
+
+        <h3>The three clients on one machine</h3>
+        <div class="diagram">
+          <svg viewBox="0 0 720 330" role="img" aria-label="CPOS architecture: the browser companion talks to the VS Code extension on port 27122 and the terminal app on port 27121; both apps share the same config and cache directories.">
+            <defs>
+              <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0 0L10 5L0 10z" fill="#727d87"/>
+              </marker>
+              <marker id="arrA" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0 0L10 5L0 10z" fill="#c4b5fd"/>
+              </marker>
+            </defs>
+            <!-- judge sites -->
+            <rect x="250" y="12" width="220" height="44" rx="9" fill="#111419" stroke="#252c34"/>
+            <text x="360" y="31" text-anchor="middle" fill="#727d87" font-family="JetBrains Mono, monospace" font-size="10">public judge pages</text>
+            <text x="360" y="46" text-anchor="middle" fill="#a8b0b8" font-family="JetBrains Mono, monospace" font-size="11.5" font-weight="600">Codeforces · CSES · AtCoder</text>
+            <!-- browser companion -->
+            <rect x="235" y="96" width="250" height="58" rx="10" fill="#151a20" stroke="#38424c"/>
+            <text x="360" y="120" text-anchor="middle" fill="#f4f7f8" font-family="Inter, sans-serif" font-size="13" font-weight="700">Browser companion</text>
+            <text x="360" y="139" text-anchor="middle" fill="#727d87" font-family="JetBrains Mono, monospace" font-size="10">reads DOM · autofills submit form</text>
+            <!-- vscode -->
+            <rect x="60" y="216" width="240" height="58" rx="10" fill="#151a20" stroke="#38424c"/>
+            <text x="180" y="240" text-anchor="middle" fill="#f4f7f8" font-family="Inter, sans-serif" font-size="13" font-weight="700">VS Code extension</text>
+            <text x="180" y="259" text-anchor="middle" fill="#c4b5fd" font-family="JetBrains Mono, monospace" font-size="10.5">127.0.0.1:27122</text>
+            <!-- tui -->
+            <rect x="420" y="216" width="240" height="58" rx="10" fill="#151a20" stroke="#38424c"/>
+            <text x="540" y="240" text-anchor="middle" fill="#f4f7f8" font-family="Inter, sans-serif" font-size="13" font-weight="700">Terminal app (TUI)</text>
+            <text x="540" y="259" text-anchor="middle" fill="#c4b5fd" font-family="JetBrains Mono, monospace" font-size="10.5">127.0.0.1:27121</text>
+            <!-- shared dirs -->
+            <rect x="250" y="298" width="220" height="26" rx="7" fill="#111419" stroke="#252c34"/>
+            <text x="360" y="315" text-anchor="middle" fill="#727d87" font-family="JetBrains Mono, monospace" font-size="10">shared config · templates · SQLite cache</text>
+            <!-- edges -->
+            <line x1="360" y1="56" x2="360" y2="94" stroke="#727d87" stroke-width="1.3" marker-end="url(#arr)" marker-start="url(#arr)"/>
+            <line x1="300" y1="154" x2="205" y2="214" stroke="#c4b5fd" stroke-width="1.3" marker-end="url(#arrA)"/>
+            <line x1="420" y1="154" x2="515" y2="214" stroke="#c4b5fd" stroke-width="1.3" marker-end="url(#arrA)"/>
+            <line x1="300" y1="245" x2="418" y2="245" stroke="#727d87" stroke-width="1.3" marker-end="url(#arr)" marker-start="url(#arr)"/>
+            <line x1="230" y1="274" x2="290" y2="300" stroke="#38424c" stroke-width="1.2"/>
+            <line x1="490" y1="274" x2="430" y2="300" stroke="#38424c" stroke-width="1.2"/>
+            <!-- edge labels -->
+            <text x="215" y="180" text-anchor="middle" fill="#a8b0b8" font-family="JetBrains Mono, monospace" font-size="9.5">capture / submit poll</text>
+            <text x="508" y="180" text-anchor="middle" fill="#a8b0b8" font-family="JetBrains Mono, monospace" font-size="9.5">capture / submit poll</text>
+            <text x="360" y="237" text-anchor="middle" fill="#727d87" font-family="JetBrains Mono, monospace" font-size="9.5">forward captures</text>
+          </svg>
+          <p class="diagram-caption">The companion polls both ports, so capture and submit work whether one or both apps are running.</p>
+        </div>
+
+        <h3>Why submit works the way it does</h3>
+        <p>
+          CPOS deliberately does <strong>not</strong> post solutions to the judges over HTTP.
+          That approach fights anti-bot protection and fragile session handling. Instead, the
+          editor queues the submission locally, and the companion autofills the real submit
+          form in your own logged-in tab and activates the submit control — the same thing
+          you would do by hand, minus the copy-paste:
+        </p>
+        <div class="diagram">
+          <svg viewBox="0 0 720 176" role="img" aria-label="Submit flow: the editor queues a submission at /pending-submit, the companion polls it, autofills the judge form in the logged-in tab, then confirms consumption.">
+            <defs>
+              <marker id="arr2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0 0L10 5L0 10z" fill="#c4b5fd"/>
+              </marker>
+            </defs>
+            <rect x="14" y="60" width="170" height="56" rx="10" fill="#151a20" stroke="#38424c"/>
+            <text x="99" y="84" text-anchor="middle" fill="#f4f7f8" font-family="Inter, sans-serif" font-size="12.5" font-weight="700">Editor / TUI</text>
+            <text x="99" y="102" text-anchor="middle" fill="#727d87" font-family="JetBrains Mono, monospace" font-size="9.5">Submit pressed</text>
+            <rect x="272" y="60" width="176" height="56" rx="10" fill="#151a20" stroke="#38424c"/>
+            <text x="360" y="84" text-anchor="middle" fill="#f4f7f8" font-family="Inter, sans-serif" font-size="12.5" font-weight="700">Companion</text>
+            <text x="360" y="102" text-anchor="middle" fill="#727d87" font-family="JetBrains Mono, monospace" font-size="9.5">polls /pending-submit</text>
+            <rect x="536" y="60" width="170" height="56" rx="10" fill="#151a20" stroke="#38424c"/>
+            <text x="621" y="84" text-anchor="middle" fill="#f4f7f8" font-family="Inter, sans-serif" font-size="12.5" font-weight="700">Judge tab</text>
+            <text x="621" y="102" text-anchor="middle" fill="#727d87" font-family="JetBrains Mono, monospace" font-size="9.5">your logged-in session</text>
+            <line x1="184" y1="76" x2="270" y2="76" stroke="#c4b5fd" stroke-width="1.3" marker-end="url(#arr2)"/>
+            <line x1="270" y1="100" x2="184" y2="100" stroke="#c4b5fd" stroke-width="1.3" marker-end="url(#arr2)"/>
+            <line x1="448" y1="88" x2="534" y2="88" stroke="#c4b5fd" stroke-width="1.3" marker-end="url(#arr2)"/>
+            <text x="227" y="66" text-anchor="middle" fill="#a8b0b8" font-family="JetBrains Mono, monospace" font-size="9">1 · queue code</text>
+            <text x="227" y="118" text-anchor="middle" fill="#a8b0b8" font-family="JetBrains Mono, monospace" font-size="9">4 · consumed ✓</text>
+            <text x="491" y="78" text-anchor="middle" fill="#a8b0b8" font-family="JetBrains Mono, monospace" font-size="9">2 · autofill form</text>
+            <text x="491" y="104" text-anchor="middle" fill="#a8b0b8" font-family="JetBrains Mono, monospace" font-size="9">3 · submit</text>
+            <text x="360" y="150" text-anchor="middle" fill="#727d87" font-family="JetBrains Mono, monospace" font-size="9.5">passwords and cookies never leave the browser</text>
+          </svg>
+        </div>
+        <p>
+          The injected script runs in the page main world (required to reach the source
+          textarea), sets the hidden source field, language, and problem identifier, and
+          carefully avoids <code>change</code> events that would reset the judge's Ace editor
+          and wipe your code. The companion picks the <strong>newest matching compiler</strong>
+          in the dropdown — G++23 before G++17.
+        </p>
+      </section>
+
+      <!-- ───────────────────────── Installation ───────────────────────── -->
+      <section id="installation">
+        <h2>Installation<a class="anchor" href="#installation">#</a></h2>
+        <p>
+          Three installs, roughly two minutes. Package-manager installs use prebuilt binaries
+          from GitHub Releases — you do <strong>not</strong> need Rust, Cargo, or a C++ linker
+          to run CPOS itself.
+        </p>
+
+        <h3>1 · Terminal app</h3>
+        <h4>macOS / Linux — Homebrew</h4>
+        <div class="codeblock">
+          <div class="codeblock-head"><span>shell</span><button class="copy-btn" data-copy="brew tap Soham109/cpos https://github.com/Soham109/cpos&#10;brew install cpos&#10;cpos">Copy</button></div>
+          <pre><code>brew tap Soham109/cpos https://github.com/Soham109/cpos
+brew install cpos
+cpos</code></pre>
+        </div>
+        <h4>Windows — Scoop</h4>
+        <div class="codeblock">
+          <div class="codeblock-head"><span>powershell</span><button class="copy-btn" data-copy="scoop bucket add cpos https://github.com/Soham109/cpos&#10;scoop install cpos&#10;cpos">Copy</button></div>
+          <pre><code>scoop bucket add cpos https://github.com/Soham109/cpos
+scoop install cpos
+cpos</code></pre>
+        </div>
+        <h4>No package manager? Installer scripts</h4>
+        <div class="codeblock">
+          <div class="codeblock-head"><span>macos / linux</span><button class="copy-btn" data-copy="curl -fsSL https://raw.githubusercontent.com/Soham109/cpos/main/install.sh | sh">Copy</button></div>
+          <pre><code>curl -fsSL https://raw.githubusercontent.com/Soham109/cpos/main/install.sh | sh</code></pre>
+        </div>
+        <div class="codeblock">
+          <div class="codeblock-head"><span>windows powershell</span><button class="copy-btn" data-copy="irm https://raw.githubusercontent.com/Soham109/cpos/main/install.ps1 | iex">Copy</button></div>
+          <pre><code>irm https://raw.githubusercontent.com/Soham109/cpos/main/install.ps1 | iex</code></pre>
+        </div>
+        <p>
+          The Unix script installs to <code>~/.local/bin/cpos</code> (add it to your
+          <code>PATH</code> if needed); the Windows script installs under
+          <code>%LOCALAPPDATA%\Programs\CPOS\bin</code> and updates your user PATH.
+          Pin a version with <code>CPOS_VERSION=0.2.2</code> before the command.
+        </p>
+        <h4>Manual download</h4>
+        <div class="table-scroll">
+          <table>
+            <tr><th>OS</th><th>Release asset</th></tr>
+            <tr><td>macOS Apple Silicon</td><td><code>cpos-aarch64-apple-darwin.tar.gz</code></td></tr>
+            <tr><td>macOS Intel</td><td><code>cpos-x86_64-apple-darwin.tar.gz</code></td></tr>
+            <tr><td>Linux x64</td><td><code>cpos-x86_64-unknown-linux-gnu.tar.gz</code></td></tr>
+            <tr><td>Windows x64</td><td><code>cpos-x86_64-pc-windows-msvc.zip</code></td></tr>
+          </table>
+        </div>
+        <p>
+          Grab the asset from the <a href="https://github.com/Soham109/cpos/releases/latest" target="_blank" rel="noopener">latest GitHub Release</a>
+          and put <code>cpos</code> on your PATH. Building from source is also possible with
+          <code>cargo install --git https://github.com/Soham109/cpos</code> (requires a Rust toolchain).
+        </p>
+
+        <h3>2 · VS Code extension</h3>
+        <p>
+          Install <a href="https://marketplace.visualstudio.com/items?itemName=sohamaggarwal.cpos-vscode" target="_blank" rel="noopener">CPOS from the VS Code Marketplace</a>,
+          or search "CPOS" in the Extensions view. It updates automatically from the Marketplace.
+        </p>
+
+        <h3>3 · Browser companion</h3>
+        <p>
+          <strong>Chrome / Edge / Brave</strong> — install from the
+          <a href="https://chromewebstore.google.com/detail/gjnbapmjonegeeamdeahcoojgokeogmm" target="_blank" rel="noopener">Chrome Web Store</a>.
+          Updates are automatic.
+        </p>
+        <p>
+          <strong>Firefox</strong> — a source install for now (AMO publishing is planned):
+        </p>
+        <ol>
+          <li>Clone the repo: <code>git clone https://github.com/Soham109/cpos</code></li>
+          <li>Open <code>about:debugging#/runtime/this-firefox</code></li>
+          <li>Click <strong>Load Temporary Add-on…</strong> and select <code>extensions/firefox/manifest.json</code></li>
+        </ol>
+        <div class="warn">
+          <strong>Safari is not supported.</strong> The companion needs Chrome, Edge, Brave,
+          or Firefox, and you must stay logged in to the judge in that same browser profile
+          for submit to work.
+        </div>
+      </section>
+
+      <!-- ───────────────────────── Quick start ───────────────────────── -->
+      <section id="quick-start">
+        <h2>Quick start<a class="anchor" href="#quick-start">#</a></h2>
+
+        <h3>First run: the setup wizard</h3>
+        <p>The first time you launch <code>cpos</code>, a 4-step wizard runs:</p>
+        <ol class="steps">
+          <li>
+            <strong>Handle</strong>
+            <p>Type your Codeforces handle — it drives sync, analytics, and recommendations.</p>
+          </li>
+          <li>
+            <strong>Language</strong>
+            <p>Pick your default language with <kbd>←</kbd>/<kbd>→</kbd>.</p>
+          </li>
+          <li>
+            <strong>Template</strong>
+            <p>Copy your solution template and press <kbd>v</kbd> to paste it whole (multi-line formatting preserved), or press <kbd>Tab</kbd> to switch to <em>Upload</em> and load it from a file path. Leave blank for the built-in template.</p>
+          </li>
+          <li>
+            <strong>CSES (optional)</strong>
+            <p>Press <kbd>o</kbd> to open the CSES login and paste your <code>PHPSESSID</code> cookie to sync solved problems — or skip and set it later in Config.</p>
+          </li>
+        </ol>
+        <p>
+          Re-run the wizard any time by clearing your handle in <code>config.toml</code>.
+        </p>
+
+        <h3>Your first problem, end to end</h3>
+        <ol class="steps">
+          <li>
+            <strong>Open a folder in VS Code</strong>
+            <p>CPOS creates solution files here. (Skipping VS Code? The TUI uses <code>~/cpos</code>.)</p>
+          </li>
+          <li>
+            <strong>Visit a problem page</strong>
+            <p>Say <a href="https://codeforces.com/problemset/problem/1971/D" target="_blank" rel="noopener">Codeforces 1971D</a>. The companion badge confirms the capture; <code>1971D.cpp</code> appears with samples loaded in the CPOS panel.</p>
+          </li>
+          <li>
+            <strong>Solve, then Run All</strong>
+            <p>Every sample compiles and runs locally with a per-test diff. <kbd>T</kbd> does the same in the terminal.</p>
+          </li>
+          <li>
+            <strong>Submit</strong>
+            <p>Press <strong>Submit</strong> in the panel (or <kbd>s</kbd> in the TUI). Your browser opens the judge's submit page, the form fills itself, and off it goes.</p>
+          </li>
+        </ol>
+        <div class="note">
+          <strong>Where files go:</strong> VS Code saves in your open folder
+          (<code>cpos.saveLocation: workspaceFolder</code>). The terminal defaults to
+          <code>~/cpos/</code> but reuses the VS Code folder once captures have been synced
+          from it.
+        </div>
+      </section>
+
+      <!-- ───────────────────────── Terminal app ───────────────────────── -->
+      <section id="terminal">
+        <h2>Terminal app<a class="anchor" href="#terminal">#</a></h2>
+        <p>
+          The TUI is a full practice cockpit: browse the catalog, sync your rating, track
+          contests, read statements, run samples, and get recommendations — without opening
+          a judge tab. Keep it running while you code in VS Code; both see the same captures,
+          submits, and progress.
+        </p>
+
+        <h3>Keys</h3>
+        <div class="table-scroll">
+          <table>
+            <tr><th>Key</th><th>What it does</th></tr>
+            <tr><td><kbd>o</kbd> / <kbd>Enter</kbd></td><td>Open a problem — creates the file in your synced project folder, else <code>~/cpos</code></td></tr>
+            <tr><td><kbd>v</kbd></td><td>Open the complete captured statement inside the TUI</td></tr>
+            <tr><td><kbd>T</kbd></td><td>Run against samples</td></tr>
+            <tr><td><kbd>s</kbd></td><td>Submit (queues for the browser companion)</td></tr>
+            <tr><td><kbd>b</kbd></td><td>Open the problem in your browser</td></tr>
+            <tr><td><kbd>U</kbd></td><td>Open by URL</td></tr>
+            <tr><td><kbd>/</kbd> · <kbd>f</kbd> · <kbd>p</kbd></td><td>Search · filter by rating · switch platform</td></tr>
+            <tr><td><kbd>Tab</kbd></td><td>Cycle Dashboard, Problems, Contests, Analytics, Recommend, Target</td></tr>
+            <tr><td><kbd>r</kbd></td><td>Sync with Codeforces and CSES</td></tr>
+          </table>
+        </div>
+
+        <h3>Statement view</h3>
+        <p>
+          Press <kbd>v</kbd> on the Problems tab for the full in-TUI problem view: title,
+          limits, sections, lists, code, terminal-rendered LaTeX, and captured diagrams, with
+          sample I/O inserted exactly where the VS Code Statement tab shows them. Samples use
+          linked Codeforces block shading when available and switch between side-by-side and
+          stacked layouts with terminal width. Kitty, Sixel, and iTerm2 graphics are detected
+          automatically; other terminals get a colored Unicode half-block rendering. From the
+          statement, <kbd>T</kbd> runs the samples and <kbd>b</kbd> opens the original page.
+        </p>
+
+        <h3>Using your own editor</h3>
+        <p>
+          Set <code>editor</code> in <code>config.toml</code> to commands like
+          <code>nvim {file}</code>, <code>hx {file}</code>, or <code>emacs -nw {file}</code>.
+          CPOS suspends the full-screen TUI while the editor runs and restores the dashboard
+          when it exits — no flicker, no corrupted screen.
+        </p>
+
+        <h3>Sync</h3>
+        <p>
+          A background task fetches Codeforces API data — problems, submissions, rating,
+          contests — into a local SQLite cache; analytics and recommendations read from that
+          cache. Press <kbd>r</kbd> to refresh. CSES progress arrives from the browser
+          companion, or from a configured <code>cses_session</code> cookie.
+        </p>
+      </section>
+
+      <!-- ───────────────────────── VS Code ───────────────────────── -->
+      <section id="vscode">
+        <h2>VS Code extension<a class="anchor" href="#vscode">#</a></h2>
+        <p>
+          Write code in the editor; the CPOS panel handles everything around it.
+        </p>
+        <ul>
+          <li><strong>Tests / Statement tabs</strong> — switch between samples and the captured statement, rendered natively with MathJax</li>
+          <li><strong>Run All</strong> — compile and test every sample locally, with per-test output diffs</li>
+          <li><strong>Submit</strong> — queue the solution for the browser companion; if the companion isn't ready, CPOS offers an <em>Open submit page</em> fallback</li>
+          <li><strong>Test cases</strong> — edit samples freely; multi-case inputs show linked input/output blocks when captured from Codeforces</li>
+          <li><strong>Settings gear</strong> — configure the default language and shared per-language templates used by VS Code, the terminal app, and the browser editor alike</li>
+        </ul>
+
+        <h3>Settings</h3>
+        <div class="table-scroll">
+          <table>
+            <tr><th>Setting</th><th>Default</th><th>What it does</th></tr>
+            <tr><td><code>cpos.saveLocation</code></td><td><code>workspaceFolder</code></td><td>Save solutions in your open folder (or <code>fixed</code>)</td></tr>
+            <tr><td><code>cpos.fixedDir</code></td><td><code>~/cpos</code></td><td>Folder used when save location is <code>fixed</code></td></tr>
+            <tr><td><code>cpos.defaultLanguage</code></td><td><code>cpp</code></td><td>Language for new solution files</td></tr>
+            <tr><td><code>cpos.runTimeoutMs</code></td><td><code>5000</code></td><td>Per-test timeout in milliseconds</td></tr>
+            <tr><td><code>cpos.compileCommands</code></td><td>—</td><td>Override compile/run commands (<code>{source}</code>, <code>{output}</code>, <code>{dir}</code> placeholders)</td></tr>
+          </table>
+        </div>
+
+        <h3>Panel themes</h3>
+        <div class="table-scroll">
+          <table>
+            <tr><th>Theme</th><th>Look</th></tr>
+            <tr><td><code>CPOS</code></td><td>Signature purple — the default</td></tr>
+            <tr><td><code>Midnight</code></td><td>Calm slate-blue</td></tr>
+            <tr><td><code>Amber</code></td><td>Warm terminal / sepia</td></tr>
+            <tr><td><code>Paper</code></td><td>High-contrast grayscale, minimal color</td></tr>
+            <tr><td><code>Native</code></td><td>Inherits your active VS Code color theme</td></tr>
+          </table>
+        </div>
+      </section>
+
+      <!-- ───────────────────────── Companion ───────────────────────── -->
+      <section id="companion">
+        <h2>Browser companion<a class="anchor" href="#companion">#</a></h2>
+        <p>
+          The core is capture and submit for Codeforces, CSES, and AtCoder. On top of that
+          sits an optional layer of practice and on-page tooling for Codeforces and CSES —
+          everything read-only (public CF API + localhost), and <strong>every feature toggles
+          individually from the popup</strong>.
+        </p>
+
+        <h3>In-browser editor</h3>
+        <p>
+          A CodeMirror editor on problem pages: run against the samples with per-test diffs
+          and custom stdin, current-line highlight, bracket matching, find &amp; replace, a
+          zen layout, and multiple color schemes. <em>Running</em> compiles locally, so it
+          needs CPOS on <code>127.0.0.1</code> (the VS Code extension or the terminal app) —
+          editing works on its own.
+        </p>
+
+        <h3>Practice tools</h3>
+        <ul>
+          <li><strong>Profile analytics</strong> — activity heatmap, streaks, solved-by-rating and by-index histograms, top tags, verdict &amp; language donuts, rating-history insights</li>
+          <li><strong>Profile compare</strong> — side-by-side stats with a rating-history overlay for any handles</li>
+          <li><strong>Daily problem &amp; streak</strong> — a rating-tuned, deterministic problem of the day</li>
+          <li><strong>Compete</strong> — 1v1 Codeforces races refereed from public submissions (first Accepted wins), delivered over the public ntfy.sh relay</li>
+          <li><strong>Favorites &amp; problem timer</strong> — star problems for the popup; a draggable per-problem stopwatch that persists</li>
+        </ul>
+
+        <h3>On the page</h3>
+        <ul>
+          <li><strong>Rating predictions</strong> on contest standings and <strong>contest reminders</strong> with a configurable lead time</li>
+          <li><strong>Problem tools</strong> — rating badge, tag-hider / training mode, one-click sample copy, similar-problem links, and a focus mode for split-screen solving</li>
+          <li><strong>Problemset &amp; standings tools</strong> — solve-status row coloring, hide-solved, per-problem submission counts, language colorizing, friends-only filter</li>
+          <li><strong>Pen &amp; marker</strong> — freehand annotation and statement highlighting, saved per problem page</li>
+          <li><strong>Appearance</strong> — syntax highlighting in statements, site themes, and a flat "Modernize" restyle that composes with them</li>
+        </ul>
+      </section>
+
+      <!-- ───────────────────────── Practice engine ───────────────────────── -->
+      <section id="practice-engine">
+        <h2>Practice engine<a class="anchor" href="#practice-engine">#</a></h2>
+        <p>
+          After a sync (<kbd>r</kbd>), CPOS builds a skill model from your submission history
+          and answers two different questions.
+        </p>
+
+        <h3>Recommend — "what should I solve next?"</h3>
+        <p>
+          CPOS considers only <strong>unsolved</strong> problems rated roughly −250 to +350
+          around your level (targeting ~+100 above you). Each candidate is scored on:
+        </p>
+        <div class="table-scroll">
+          <table>
+            <tr><th>Signal</th><th>What it means</th></tr>
+            <tr><td><strong>Weak topics</strong></td><td>Tags where your solve rate is low get the most weight — a topic you fail every time counts more than one you're half-comfortable with</td></tr>
+            <tr><td><strong>Multiple weak tags</strong></td><td>Problems combining several weak areas get a small bonus</td></tr>
+            <tr><td><strong>Unfinished attempts</strong></td><td>Problems you tried but didn't solve are boosted so you can finish what you started</td></tr>
+            <tr><td><strong>Rating fit</strong></td><td>Problems near your target practice rating score higher</td></tr>
+            <tr><td><strong>Popularity</strong></td><td>Well-known problems (many solves) are preferred — usually better written</td></tr>
+          </table>
+        </div>
+        <p>
+          Top scorers are then <strong>diversified</strong> — CPOS caps how many problems
+          share the same primary tag or exact rating, so the list is never fifteen identical
+          DP problems. With no solves yet (cold start), CPOS falls back to popular problems
+          around 1200 spread across tags until your history fills in.
+        </p>
+
+        <h3>Target — "where am I, what's left, in what order?"</h3>
+        <p>
+          Set a goal on the Target tab — cycle rank milestones with <kbd>[</kbd>/<kbd>]</kbd>
+          or press <kbd>t</kbd> to type an exact rating. CPOS shows:
+        </p>
+        <ul>
+          <li><strong>Status</strong> — your effective level, the gap to the goal, an overall readiness %, and solves in the goal band</li>
+          <li><strong>Topics to cover</strong> — each prerequisite topic labelled <em>Ready / Developing / Gap / Untouched</em>, weakest first, with the rating it starts to matter at</li>
+          <li><strong>A step-by-step plan</strong> — unsolved problems on rating rungs from your level to the goal, labelled <em>Base → Build → Push → Target</em>; press <kbd>Enter</kbd> on a step to start it</li>
+        </ul>
+        <div class="note">
+          <strong>CF rating vs Practice.</strong> The Target tab shows your official synced
+          Codeforces rating separately from its solve-derived <em>Practice</em> estimate.
+          Practice controls the difficulty ramp; only the real rating measures the gap to a
+          goal. The plan is Codeforces-only, since CSES tasks don't carry ratings.
+        </div>
+      </section>
+
+      <!-- ───────────────────────── Architecture ───────────────────────── -->
+      <section id="architecture">
+        <h2>Architecture &amp; protocol<a class="anchor" href="#architecture">#</a></h2>
+        <p>
+          Both CPOS applications expose a small HTTP API bound to the loopback interface.
+          The companion polls both ports; cross-origin headers are permissive because traffic
+          never leaves the machine.
+        </p>
+        <div class="table-scroll">
+          <table>
+            <tr><th>Port</th><th>Owner</th><th>Implementation</th></tr>
+            <tr><td><code>27121</code></td><td>Terminal TUI</td><td><code>src/engine/capture.rs</code></td></tr>
+            <tr><td><code>27122</code></td><td>VS Code extension</td><td><code>extensions/vscode/src/extension.ts</code></td></tr>
+          </table>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <tr><th>Method</th><th>Path</th><th>Purpose</th></tr>
+            <tr><td><code>POST</code></td><td><code>/capture/problem</code></td><td>Problem metadata, sample tests, optional <code>solution_path</code> from VS Code</td></tr>
+            <tr><td><code>POST</code></td><td><code>/capture/cses-progress</code></td><td>CSES solved and attempted task identifiers</td></tr>
+            <tr><td><code>GET</code></td><td><code>/pending-submit</code></td><td>Browser polls for a queued submission</td></tr>
+            <tr><td><code>POST</code></td><td><code>/pending-submit/consumed</code></td><td>Clear the queue after autofill completes</td></tr>
+            <tr><td><code>GET/POST</code></td><td><code>/config</code></td><td>Read or save the default language and shared per-language templates</td></tr>
+            <tr><td><code>GET/POST</code></td><td><code>/challenges</code></td><td>VS Code-only mirror for Compete races and matching preferences</td></tr>
+            <tr><td><code>GET</code></td><td><code>/recommend</code></td><td>Central practice engine (TUI only): query → scored, reasoned recommendations</td></tr>
+            <tr><td><code>GET</code></td><td><code>/health</code></td><td>Liveness check</td></tr>
+          </table>
+        </div>
+
+        <h3>Where files live</h3>
+        <div class="table-scroll">
+          <table>
+            <tr><th>Location</th><th>Contents</th></tr>
+            <tr><td>Your open folder (VS Code)</td><td>Solution sources, e.g. <code>1982C.cpp</code></td></tr>
+            <tr><td><code>~/cpos/</code> or <code>workspace_dir</code></td><td>Default terminal workspace (<code>codeforces/</code>, <code>cses/</code>, templates)</td></tr>
+            <tr><td>Config dir (see <a href="#configuration">Configuration</a>)</td><td>Shared config and per-language templates</td></tr>
+            <tr><td>Platform data dir</td><td>SQLite cache and CSES progress</td></tr>
+            <tr><td><code>~/.cpos-vscode/</code></td><td>VS Code sample cache, problem metadata, compile artifacts</td></tr>
+          </table>
+        </div>
+        <p>
+          Want the full picture? The
+          <a href="/architecture">interactive architecture graph</a> maps every module and
+          how it connects — generated from the code, with a link from each node to its
+          source file.
+        </p>
+      </section>
+
+      <!-- ───────────────────────── Configuration ───────────────────────── -->
+      <section id="configuration">
+        <h2>Configuration<a class="anchor" href="#configuration">#</a></h2>
+        <h3>Terminal app — <code>config.toml</code></h3>
+        <div class="table-scroll">
+          <table>
+            <tr><th>OS</th><th>Path</th></tr>
+            <tr><td>macOS</td><td><code>~/Library/Application Support/cpos/config.toml</code></td></tr>
+            <tr><td>Linux</td><td><code>~/.config/cpos/config.toml</code></td></tr>
+            <tr><td>Windows</td><td><code>%APPDATA%\cpos\config.toml</code></td></tr>
+          </table>
+        </div>
+        <div class="codeblock">
+          <div class="codeblock-head"><span>config.toml</span><button class="copy-btn" data-copy='default_language = "cpp"&#10;theme = "purple"   # purple | cyan | green | amber | mono | plain | light&#10;editor = "code {file}"&#10;&#10;[handles]&#10;codeforces = "your_handle"'>Copy</button></div>
+          <pre><code>default_language = <span class="hl">"cpp"</span>
+theme = <span class="hl">"purple"</span>   <span class="cmt"># purple | cyan | green | amber | mono | plain | light</span>
+editor = <span class="hl">"code {file}"</span>
+
+[handles]
+codeforces = <span class="hl">"your_handle"</span></code></pre>
+        </div>
+        <p>
+          <code>plain</code> is a neutral grayscale theme for low-color terminals;
+          <code>mono</code> is the single-accent minimal one; <code>light</code> suits light
+          terminal setups. Set <code>workspace_dir</code> to change where the TUI creates
+          solution files, and <code>cses_session</code> to sync CSES progress server-side.
+        </p>
+        <p>
+          Shared per-language templates live in the config directory and are served over
+          <code>/config</code> to VS Code and the browser editor — edit them once, they apply
+          everywhere.
+        </p>
+        <div class="note">
+          <strong>macOS C++:</strong> Apple's default <code>g++</code> is Clang and lacks
+          <code>bits/stdc++.h</code>. Run <code>brew install gcc</code> — CPOS auto-detects
+          Homebrew's <code>g++-14</code>/<code>g++-15</code> even when the GUI app's PATH is thin.
+        </div>
+        <h3>Environment</h3>
+        <div class="table-scroll">
+          <table>
+            <tr><th>Variable</th><th>Effect</th></tr>
+            <tr><td><code>CPOS_NO_UPDATE_CHECK=1</code></td><td>Skip the best-effort update check on TUI startup</td></tr>
+            <tr><td><code>CPOS_VERSION=x.y.z</code></td><td>Pin a version for the installer scripts</td></tr>
+          </table>
+        </div>
+      </section>
+
+      <!-- ───────────────────────── Updating ───────────────────────── -->
+      <section id="updating">
+        <h2>Updating<a class="anchor" href="#updating">#</a></h2>
+        <p>
+          On startup the terminal app does a quick, best-effort update check. If it's
+          outdated, CPOS <strong>asks</strong> before updating — never silently. Offline or
+          slow? CPOS just opens normally.
+        </p>
+        <div class="codeblock">
+          <div class="codeblock-head"><span>shell</span><button class="copy-btn" data-copy="cpos update">Copy</button></div>
+          <pre><code>cpos update</code></pre>
+        </div>
+        <ul>
+          <li><strong>Terminal app</strong> — <code>cpos update</code> delegates to Homebrew or Scoop for package installs, and refreshes standalone Unix binaries in place. Config, cache, templates, and problem data are kept.</li>
+          <li><strong>VS Code extension</strong> — updates automatically from the Marketplace.</li>
+          <li><strong>Browser companion</strong> — Chrome/Edge/Brave update from the Web Store automatically. Firefox source installs: pull the latest repo and reload <code>extensions/firefox/manifest.json</code>.</li>
+        </ul>
+      </section>
+
+      <!-- ───────────────────────── Troubleshooting ───────────────────────── -->
+      <section id="troubleshooting">
+        <h2>Troubleshooting<a class="anchor" href="#troubleshooting">#</a></h2>
+        <p>The issues people actually hit, with the fast fix. The full guide with every known case lives in
+          <a href="https://github.com/Soham109/cpos/blob/main/TROUBLESHOOTING.md" target="_blank" rel="noopener">TROUBLESHOOTING.md</a>.</p>
+
+        <h3>Run All fails with <code>spawn sh ENOENT</code></h3>
+        <p>
+          CPOS couldn't start a shell — this is <em>not</em> a verdict on your solution.
+          Update the VS Code extension to 0.3.21+. On macOS, install a compiler
+          (<code>brew install gcc</code>) and launch VS Code from the terminal
+          (<code>code .</code>) so PATH includes Homebrew. On Windows, install a C++
+          toolchain (e.g. MSYS2's <code>mingw-w64-ucrt-x86_64-gcc</code>) and put it on PATH.
+          <strong>View → Output → CPOS</strong> shows the exact command that ran.
+        </p>
+
+        <h3><code>#include &lt;bits/stdc++.h&gt;</code> not found on macOS</h3>
+        <p>
+          Apple's <code>g++</code> is Clang. <code>brew install gcc</code> — CPOS auto-detects
+          the Homebrew GNU compiler.
+        </p>
+
+        <h3>Submit does nothing</h3>
+        <ol>
+          <li>Companion installed and enabled in Chrome/Edge/Brave (or Firefox source install)?</li>
+          <li>Logged in to the judge <em>in that same browser profile</em>?</li>
+          <li>VS Code extension running (it owns the capture server on <code>27122</code>)?</li>
+          <li>Still stuck — the panel offers an <em>Open submit page</em> fallback on 0.3.30+.</li>
+        </ol>
+
+        <h3>Samples or file not appearing</h3>
+        <ol>
+          <li>Open the folder you want files in <em>before</em> capturing.</li>
+          <li>Only one VS Code window can own port <code>27122</code> — the panel warns if another window is active.</li>
+          <li>Refresh the problem page after installing the extension.</li>
+        </ol>
+
+        <h3>Windows: source build fails with <code>link.exe</code> not found</h3>
+        <p>
+          Only applies to <code>cargo install</code> builds — the prebuilt installers avoid
+          it entirely. Install
+          <a href="https://visualstudio.microsoft.com/visual-cpp-build-tools/" target="_blank" rel="noopener">Visual Studio Build Tools</a>
+          with "Desktop development with C++", or switch Rust to the GNU toolchain with MSYS2.
+        </p>
+
+        <h3>TUI shows garbled text on Windows</h3>
+        <p>
+          Fixed in 0.1.6+ — CPOS switches the console to UTF-8 on startup. Run
+          <code>cpos update</code>.
+        </p>
+      </section>
+
+      <!-- ───────────────────────── Community ───────────────────────── -->
+      <section id="community">
+        <h2>Community<a class="anchor" href="#community">#</a></h2>
+        <p>
+          CPOS is built by one person, in the open, MIT-licensed. The
+          <a href="https://discord.gg/QkdmcRKz" target="_blank" rel="noopener">Discord</a> is the
+          best place for help, workflows, and what's coming next;
+          <a href="https://github.com/Soham109/cpos/issues" target="_blank" rel="noopener">GitHub issues</a>
+          for bugs and feature requests. If CPOS saves you time on every problem,
+          <a href="https://github.com/sponsors/Soham109" target="_blank" rel="noopener">sponsoring</a>
+          funds new judges, contest mode, and ongoing maintenance.
+        </p>
+        <p>
+          Roadmap highlights: AtCoder &amp; CodeChef support, contest mode with per-problem
+          timers, and reading submission verdicts back into CPOS.
+        </p>
+      </section>
+
+      <footer class="doc-foot">
+        <span>© CPOS · MIT licensed · Built with Rust</span>
+        <a href="https://github.com/Soham109/cpos" target="_blank" rel="noopener">GitHub</a>
+        <a href="https://github.com/Soham109/cpos/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener">Contributing</a>
+        <a href="https://github.com/Soham109/cpos/blob/main/SECURITY.md" target="_blank" rel="noopener">Security</a>
+      </footer>
+    </main>
+  </div>
+
+  <script>
+    (function () {
+      // Sidebar toggle (mobile)
+      var toggle = document.getElementById("nav-toggle");
+      var backdrop = document.getElementById("backdrop");
+      function closeNav() {
+        document.body.classList.remove("nav-open");
+        toggle.setAttribute("aria-expanded", "false");
+      }
+      toggle.addEventListener("click", function () {
+        var open = document.body.classList.toggle("nav-open");
+        toggle.setAttribute("aria-expanded", String(open));
+      });
+      backdrop.addEventListener("click", closeNav);
+      document.querySelectorAll(".side-link").forEach(function (link) {
+        link.addEventListener("click", closeNav);
+      });
+
+      // Copy buttons
+      document.querySelectorAll(".copy-btn").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          navigator.clipboard.writeText(btn.dataset.copy).then(function () {
+            btn.textContent = "Copied";
+            btn.classList.add("done");
+            setTimeout(function () {
+              btn.textContent = "Copy";
+              btn.classList.remove("done");
+            }, 1600);
+          });
+        });
+      });
+
+      // Scrollspy
+      var links = Array.prototype.slice.call(document.querySelectorAll(".side-link"));
+      var sections = links
+        .map(function (l) { return document.querySelector(l.getAttribute("href")); })
+        .filter(Boolean);
+      function setActive(id) {
+        links.forEach(function (l) {
+          l.classList.toggle("active", l.getAttribute("href") === "#" + id);
+        });
+      }
+      var observer = new IntersectionObserver(
+        function (entries) {
+          entries.forEach(function (e) {
+            if (e.isIntersecting) setActive(e.target.id);
+          });
+        },
+        { rootMargin: "-20% 0px -70% 0px" }
+      );
+      sections.forEach(function (s) { observer.observe(s); });
+      if (sections.length) setActive(sections[0].id);
+    })();
+  </script>
+</body>
+</html>
