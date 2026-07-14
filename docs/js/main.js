@@ -126,32 +126,6 @@
   showHeroSlide(0);
   startHeroCarousel();
 
-  const themeToggle = document.querySelector(".theme-toggle");
-  const themeMeta = document.querySelector('meta[name="theme-color"]');
-
-  function setTheme(theme) {
-    document.documentElement.dataset.theme = theme;
-    try {
-      localStorage.setItem("cpos-theme", theme);
-    } catch {
-      // Theme still works for the current page even if persistence is blocked.
-    }
-    if (themeMeta) themeMeta.setAttribute("content", theme === "light" ? "#f7f9fb" : "#08090b");
-    if (themeToggle) {
-      themeToggle.setAttribute(
-        "aria-label",
-        theme === "light" ? "Switch to dark theme" : "Switch to light theme"
-      );
-    }
-  }
-
-  if (themeToggle) {
-    setTheme(document.documentElement.dataset.theme || "dark");
-    themeToggle.addEventListener("click", () => {
-      setTheme(document.documentElement.dataset.theme === "light" ? "dark" : "light");
-    });
-  }
-
   const liveSources = {
     repo: "https://api.github.com/repos/Soham109/cpos",
     latestRelease: "https://api.github.com/repos/Soham109/cpos/releases/latest",

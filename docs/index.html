@@ -15,11 +15,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Instrument+Sans:wght@600;700;800&display=swap" rel="stylesheet">
   <script>
-    try {
-      document.documentElement.dataset.theme = localStorage.getItem("cpos-theme") || "dark";
-    } catch {
-      document.documentElement.dataset.theme = "dark";
-    }
+    // Dark theme only for now; the light-theme CSS stays for when the toggle returns.
+    document.documentElement.dataset.theme = "dark";
   </script>
   <link rel="stylesheet" href="css/style.css">
   <link rel="preload" as="image" href="img/dashboard.webp" type="image/webp">
@@ -84,10 +81,6 @@
         <svg aria-hidden="true"><use href="#i-github"/></svg>
         GitHub
       </a>
-      <button class="theme-toggle" type="button" aria-label="Switch to light theme" title="Switch theme">
-        <svg class="theme-icon theme-icon-sun" aria-hidden="true"><use href="#i-sun"/></svg>
-        <svg class="theme-icon theme-icon-moon" aria-hidden="true"><use href="#i-moon"/></svg>
-      </button>
       <a href="#install" class="nav-cta">Install</a>
     </nav>
   </header>
