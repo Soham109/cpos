@@ -75,8 +75,9 @@ Then:
 - **Auto file creation & sample capture** — open a problem, get a ready-to-edit file with its tests
 - **Run & submit** — compile and diff samples locally; submit autofills the judge form in your browser
 - **Statements everywhere** — the full captured statement renders in VS Code and inside the terminal (LaTeX and diagrams included)
-- **Recommendations** — personalized unsolved problems aimed at your weak topics
-- **Targeted practice** — set a rating goal, get the topics you're missing and an ordered plan
+- **Sample visualizer** — auto-detects what a sample input is (graph, tree, grid, intervals, permutation, …) and draws it, with an execution trace player that animates your own code on the drawing
+- **Practice engine** — a per-tag skill model scores unsolved problems across seven query modes (weakness, push, refresh, upsolve, explore, …), each pick with human-readable reasons
+- **Goal plans** — set a rating goal, get topic readiness and an ordered problem plan to reach it
 - **Analytics** — rating history, topic breakdown, activity heatmap, streaks
 - **Contests** — upcoming and running Codeforces contests with countdowns
 - **Shared templates** — per-language templates used by VS Code, the terminal, and the browser editor alike
@@ -101,7 +102,8 @@ Then:
 
 ## Roadmap
 
-- AtCoder & CodeChef support
+- AtCoder in the terminal app (sync, analytics, recommendations — capture, submit, and the visualizer already work in the browser and VS Code)
+- CodeChef support
 - Contest mode with per-problem timers
 - Submission verdicts read back into CPOS
 

@@ -53,6 +53,7 @@
           <a class="side-link" href="#terminal">Terminal app</a>
           <a class="side-link" href="#vscode">VS Code extension</a>
           <a class="side-link" href="#companion">Browser companion</a>
+          <a class="side-link" href="#visualizer">Sample visualizer</a>
         </div>
         <div class="side-group">
           <span>Going deeper</span>
@@ -417,9 +418,23 @@ cpos</code></pre>
             <tr><td><kbd>s</kbd></td><td>Submit (queues for the browser companion)</td></tr>
             <tr><td><kbd>b</kbd></td><td>Open the problem in your browser</td></tr>
             <tr><td><kbd>U</kbd></td><td>Open by URL</td></tr>
-            <tr><td><kbd>/</kbd> · <kbd>f</kbd> · <kbd>p</kbd></td><td>Search · filter by rating · switch platform</td></tr>
-            <tr><td><kbd>Tab</kbd></td><td>Cycle Dashboard, Problems, Contests, Analytics, Recommend, Target</td></tr>
+            <tr><td><kbd>/</kbd> · <kbd>f</kbd> · <kbd>p</kbd></td><td>Search · filter by rating or tags · switch platform</td></tr>
+            <tr><td><kbd>Tab</kbd></td><td>Cycle Dashboard, Problems, Contests, Analytics, Practice, Config</td></tr>
             <tr><td><kbd>r</kbd></td><td>Sync with Codeforces and CSES</td></tr>
+          </table>
+        </div>
+
+        <h4>On the Practice tab</h4>
+        <div class="table-scroll">
+          <table>
+            <tr><th>Key</th><th>What it does</th></tr>
+            <tr><td><kbd>m</kbd> / <kbd>M</kbd></td><td>Cycle the query mode forward / back (auto, weakness, push, refresh, upsolve, explore, plan)</td></tr>
+            <tr><td><kbd>[</kbd> / <kbd>]</kbd></td><td>Step the goal through CF rank milestones (Pupil → … → Legendary GM)</td></tr>
+            <tr><td><kbd>t</kbd></td><td>Type an exact goal rating (900–3500)</td></tr>
+            <tr><td><kbd>f</kbd></td><td>Filter recommendations by comma-separated tags</td></tr>
+            <tr><td><kbd>y</kbd></td><td>Cycle the contest-freshness floor (off → last 2 years → last 4 years)</td></tr>
+            <tr><td><kbd>j</kbd> / <kbd>k</kbd></td><td>Move through recommendations</td></tr>
+            <tr><td><kbd>Enter</kbd> / <kbd>o</kbd></td><td>Start the selected problem in the normal solve flow</td></tr>
           </table>
         </div>
 
@@ -458,12 +473,19 @@ cpos</code></pre>
           Write code in the editor; the CPOS panel handles everything around it.
         </p>
         <ul>
-          <li><strong>Tests / Statement tabs</strong> — switch between samples and the captured statement, rendered natively with MathJax</li>
+          <li><strong>Tests / Statement / Solution tabs</strong> — samples, the captured statement rendered natively with MathJax, and a Solution tab with video solutions (clickable YouTube thumbnails) plus one-click editorial and search links</li>
           <li><strong>Run All</strong> — compile and test every sample locally, with per-test output diffs</li>
           <li><strong>Submit</strong> — queue the solution for the browser companion; if the companion isn't ready, CPOS offers an <em>Open submit page</em> fallback</li>
-          <li><strong>Test cases</strong> — edit samples freely; multi-case inputs show linked input/output blocks when captured from Codeforces</li>
+          <li><strong>Test cases</strong> — edit samples freely; multi-case inputs show linked input/output blocks when captured from Codeforces, and boxes auto-size to their content</li>
+          <li><strong>Visualize</strong> — open the <a href="#visualizer">sample visualizer</a> for the active problem via <code>CPOS: Visualize Samples</code></li>
           <li><strong>Settings gear</strong> — configure the default language and shared per-language templates used by VS Code, the terminal app, and the browser editor alike</li>
+          <li><strong>Header links</strong> — Sponsor, Theme, Discord, and GitHub stay reachable at any sidebar width, collapsing to icons by priority as it narrows</li>
         </ul>
+        <div class="note">
+          <strong>Anti-cheat gate.</strong> The Solution tab hides itself automatically while
+          a Codeforces contest is still running (any non-finished phase); it reappears once
+          the contest ends. CSES and finished contests are unaffected.
+        </div>
 
         <h3>Settings</h3>
         <div class="table-scroll">
@@ -471,11 +493,24 @@ cpos</code></pre>
             <tr><th>Setting</th><th>Default</th><th>What it does</th></tr>
             <tr><td><code>cpos.saveLocation</code></td><td><code>workspaceFolder</code></td><td>Save solutions in your open folder (or <code>fixed</code>)</td></tr>
             <tr><td><code>cpos.fixedDir</code></td><td><code>~/cpos</code></td><td>Folder used when save location is <code>fixed</code></td></tr>
+            <tr><td><code>cpos.subfolderPerPlatform</code></td><td><code>false</code></td><td>Group solutions into <code>codeforces/</code>, <code>cses/</code>, <code>atcoder/</code> subfolders</td></tr>
             <tr><td><code>cpos.defaultLanguage</code></td><td><code>cpp</code></td><td>Language for new solution files</td></tr>
+            <tr><td><code>cpos.templateFile</code></td><td>—</td><td>Legacy per-file template path (shared templates are preferred)</td></tr>
             <tr><td><code>cpos.runTimeoutMs</code></td><td><code>5000</code></td><td>Per-test timeout in milliseconds</td></tr>
-            <tr><td><code>cpos.compileCommands</code></td><td>—</td><td>Override compile/run commands (<code>{source}</code>, <code>{output}</code>, <code>{dir}</code> placeholders)</td></tr>
+            <tr><td><code>cpos.compileCommands</code></td><td>—</td><td>Override compile/run commands (<code>{source}</code>, <code>{output}</code>, <code>{dir}</code>, <code>{classname}</code> placeholders)</td></tr>
+            <tr><td><code>cpos.capturePort</code></td><td><code>27122</code></td><td>Port for the local capture server</td></tr>
+            <tr><td><code>cpos.autoStartCaptureServer</code></td><td><code>true</code></td><td>Start the capture server when VS Code opens</td></tr>
+            <tr><td><code>cpos.openOnCapture</code></td><td><code>true</code></td><td>Open the solution file when a capture arrives</td></tr>
+            <tr><td><code>cpos.saveSamplesNextToSolution</code></td><td><code>false</code></td><td>Write a <code>&lt;solution&gt;.samples.json</code> beside each solution</td></tr>
+            <tr><td><code>cpos.showVisualizeButton</code></td><td><code>false</code></td><td>Show the Visualize button in the panel (the command always works)</td></tr>
           </table>
         </div>
+        <p>
+          Command Palette: <code>CPOS: Run Samples</code>, <code>CPOS: Submit Active File</code>,
+          <code>CPOS: Open Problem</code>, <code>CPOS: Visualize Samples</code>, and
+          <code>CPOS: Start/Stop Capture Server</code>; Run and Submit also appear as
+          editor-title buttons.
+        </p>
 
         <h3>Panel themes</h3>
         <div class="table-scroll">
@@ -497,83 +532,264 @@ cpos</code></pre>
           The core is capture and submit for Codeforces, CSES, and AtCoder. On top of that
           sits an optional layer of practice and on-page tooling for Codeforces and CSES —
           everything read-only (public CF API + localhost), and <strong>every feature toggles
-          individually from the popup</strong>.
+          individually from the popup</strong>. The popup itself has three tabs:
+          <em>Settings</em> (feature switches, appearance with theme swatches and a custom
+          accent color picker, shared code templates), <em>Recommend</em>, and <em>Compete</em>.
         </p>
 
         <h3>In-browser editor</h3>
         <p>
           A CodeMirror editor on problem pages: run against the samples with per-test diffs
           and custom stdin, current-line highlight, bracket matching, find &amp; replace, a
-          zen layout, and multiple color schemes. <em>Running</em> compiles locally, so it
-          needs CPOS on <code>127.0.0.1</code> (the VS Code extension or the terminal app) —
-          editing works on its own.
+          zen layout, and multiple color schemes. Run (<kbd>Ctrl/⌘</kbd>+<kbd>Enter</kbd>)
+          toggles to Stop for cancellable runs; results land in a resizable console with a
+          pass-ratio meter, per-test cards, jump-to-first-failure, and a copyable summary.
+          Submit is <kbd>Ctrl/⌘</kbd>+<kbd>Shift</kbd>+<kbd>Enter</kbd>. <em>Running</em>
+          compiles locally, so it needs CPOS on <code>127.0.0.1</code> (the VS Code extension
+          or the terminal app) — editing works on its own.
+        </p>
+
+        <h3>Recommend tab</h3>
+        <p>
+          The popup's Recommend tab is a front-end for the <a href="#practice-engine">central
+          practice engine</a>: pick one of the seven modes, autocomplete tags, set a rating
+          range, freshness floor, and count, and get tier-colored recommendations with
+          contest year, tags, and the engine's reasons — plus your level, goal, readiness,
+          and weak-tag chips. It requires the terminal app running (only the TUI holds the
+          submission cache).
+        </p>
+
+        <h3>Compete — 1v1 races</h3>
+        <p>
+          Challenge a friend by Codeforces handle or publish an <strong>open race</strong>
+          others can discover and accept within a chosen rating range. Pick a specific
+          problem or a rating, set a time limit, and CPOS referees from public submissions —
+          the first Accepted after the start wins. In-page cards let you accept or decline a
+          challenge right on Codeforces, and the on-problem sword icon shows a live race
+          state. Delivery uses public <a href="https://ntfy.sh" target="_blank" rel="noopener">ntfy.sh</a>
+          topics derived from CF handles; messages carry only race metadata — never code,
+          cookies, or passwords. VS Code mirrors races, results, and matching preferences
+          over the localhost <code>/challenges</code> endpoint, so you can manage races from
+          either side.
         </p>
 
         <h3>Practice tools</h3>
         <ul>
-          <li><strong>Profile analytics</strong> — activity heatmap, streaks, solved-by-rating and by-index histograms, top tags, verdict &amp; language donuts, rating-history insights</li>
+          <li><strong>Profile analytics</strong> — activity heatmap, streaks, solved-by-rating and by-index histograms, top tags, verdict &amp; language donuts, a when-you-code punch-card (hour × weekday), tag-strength radar, difficulty trend, solved-per-month, and insight facts like first-attempt accept rate and peak coding hour</li>
           <li><strong>Profile compare</strong> — side-by-side stats with a rating-history overlay for any handles</li>
-          <li><strong>Daily problem &amp; streak</strong> — a rating-tuned, deterministic problem of the day</li>
-          <li><strong>Compete</strong> — 1v1 Codeforces races refereed from public submissions (first Accepted wins), delivered over the public ntfy.sh relay</li>
+          <li><strong>Daily problem &amp; streak</strong> — a deterministic problem of the day, tuned to your rating automatically or pinned to an exact rating from the popup</li>
           <li><strong>Favorites &amp; problem timer</strong> — star problems for the popup; a draggable per-problem stopwatch that persists</li>
+          <li><strong>Shared templates</strong> — a per-language templates card (upload / reset / save &amp; sync); edits made while CPOS is offline queue up and sync when a runner reconnects</li>
         </ul>
 
         <h3>On the page</h3>
         <ul>
           <li><strong>Rating predictions</strong> on contest standings and <strong>contest reminders</strong> with a configurable lead time</li>
-          <li><strong>Problem tools</strong> — rating badge, tag-hider / training mode, one-click sample copy, similar-problem links, and a focus mode for split-screen solving</li>
+          <li><strong>Problem tools</strong> — rating badge, tag-hider / training mode, one-click sample copy, and similar-problem links</li>
+          <li><strong>Problem focus</strong> — an always-available toggle on Codeforces problem pages that hides the right rail and widens the statement for split-screen solving</li>
           <li><strong>Problemset &amp; standings tools</strong> — solve-status row coloring, hide-solved, per-problem submission counts, language colorizing, friends-only filter</li>
-          <li><strong>Pen &amp; marker</strong> — freehand annotation and statement highlighting, saved per problem page</li>
+          <li><strong>Pen &amp; marker</strong> — freehand annotation and statement highlighting, saved per problem page and anchored to the content as it scrolls</li>
           <li><strong>Appearance</strong> — syntax highlighting in statements, site themes, and a flat "Modernize" restyle that composes with them</li>
         </ul>
+      </section>
+
+      <!-- ───────────────────────── Sample visualizer ───────────────────────── -->
+      <section id="visualizer">
+        <h2>Sample visualizer<a class="anchor" href="#visualizer">#</a></h2>
+        <p>
+          CPOS can look at a raw sample input and <strong>draw what it is</strong>. It
+          auto-detects the structure — graphs and trees (force and tidy layouts, edge
+          weights, re-rooting, colored node values, marked vertices), parent arrays, grids
+          and mazes, value-heatmap matrices, arrays, permutations with cycle arcs, intervals,
+          2D point sets, strings (bracket sequences get matched-pair arcs and nesting-depth
+          colors), multi-string inputs, and functional graphs — and renders it interactively
+          with pan, zoom, and drag.
+        </p>
+        <ul>
+          <li><strong>In the browser</strong> — a <code>◈ VIZ</code> slide-in panel on Codeforces, CSES, and AtCoder problem pages; toggle it with the "Sample visualizer" switch in the popup</li>
+          <li><strong>In VS Code</strong> — the <code>CPOS: Visualize Samples</code> command opens a visualizer tab for the active solution's samples; an optional panel button is gated behind <code>cpos.showVisualizeButton</code></li>
+          <li><strong>Controls</strong> — per-testcase selector for multi-case inputs, input vs expected-output views, manual type and indexing overrides, live-editable input, and SVG / Graphviz DOT export</li>
+        </ul>
+
+        <h3>Execution trace player</h3>
+        <p>
+          The visualizer can also run <strong>your own code</strong> on the shown sample
+          through the local CPOS runner and animate the execution on the drawing — zero
+          setup. Python runs under a line tracer that narrates variable, list, and matrix
+          changes; C++ sources are instrumented for array/matrix/scalar assignments and
+          loop-variable tracking before compiling (with a silent fallback to your original
+          source if instrumentation fails). You get a live variables panel, an execution
+          cursor, index pointers under the cells and nodes your variables reference, and
+          keyboard scrubbing (arrows to step, space to play, <kbd>r</kbd> to run). For full
+          control, optional <code>#cpos visit u</code> / <code>#cpos set i v</code> /
+          <code>#cpos cell r c v</code> / <code>#cpos edge u v</code> stderr macros drive
+          the animation manually. A freehand marker (three ink colors) survives pan/zoom
+          and is included in SVG exports.
+        </p>
+        <div class="note">
+          <strong>Where it runs:</strong> the browser visualizer traces the in-browser
+          editor's code; the VS Code visualizer traces your active solution file. Both need
+          a local runner (the VS Code extension or terminal app) since browsers can't
+          compile C++.
+        </div>
       </section>
 
       <!-- ───────────────────────── Practice engine ───────────────────────── -->
       <section id="practice-engine">
         <h2>Practice engine<a class="anchor" href="#practice-engine">#</a></h2>
         <p>
-          After a sync (<kbd>r</kbd>), CPOS builds a skill model from your submission history
-          and answers two different questions.
+          The central practice engine (<code>src/engine/practice.rs</code>) turns your full
+          submission history into a per-tag skill model, then scores every unsolved problem
+          against it. One engine drives three surfaces: the TUI's <strong>Practice tab</strong>,
+          the browser popup's <strong>Recommend tab</strong>, and the
+          <code>GET /recommend</code> localhost API. Every recommendation carries
+          human-readable reasons — e.g. <em>"weak topic trees: your skill ≈1000 vs level
+          1300 · 2024 contest"</em> — so you always know why a problem was picked.
         </p>
 
-        <h3>Recommend — "what should I solve next?"</h3>
+        <div class="diagram">
+          <svg viewBox="0 0 720 128" role="img" aria-label="Practice engine pipeline: submission history feeds a per-tag skill model, candidates are filtered, scored per mode, diversified, and returned with reasons.">
+            <defs>
+              <marker id="arr3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                <path d="M0 0L10 5L0 10z" fill="#c4b5fd"/>
+              </marker>
+            </defs>
+            <rect x="8" y="34" width="122" height="52" rx="2" fill="#151a20" stroke="#38424c"/>
+            <text x="69" y="56" text-anchor="middle" fill="#f4f7f8" font-family="Inter, sans-serif" font-size="11.5" font-weight="700">Submission</text>
+            <text x="69" y="72" text-anchor="middle" fill="#f4f7f8" font-family="Inter, sans-serif" font-size="11.5" font-weight="700">history</text>
+            <rect x="158" y="34" width="122" height="52" rx="2" fill="#151a20" stroke="#38424c"/>
+            <text x="219" y="56" text-anchor="middle" fill="#f4f7f8" font-family="Inter, sans-serif" font-size="11.5" font-weight="700">Per-tag</text>
+            <text x="219" y="72" text-anchor="middle" fill="#f4f7f8" font-family="Inter, sans-serif" font-size="11.5" font-weight="700">skill model</text>
+            <rect x="308" y="34" width="122" height="52" rx="2" fill="#151a20" stroke="#38424c"/>
+            <text x="369" y="56" text-anchor="middle" fill="#f4f7f8" font-family="Inter, sans-serif" font-size="11.5" font-weight="700">Candidate</text>
+            <text x="369" y="72" text-anchor="middle" fill="#f4f7f8" font-family="Inter, sans-serif" font-size="11.5" font-weight="700">filters</text>
+            <rect x="458" y="34" width="122" height="52" rx="2" fill="#151a20" stroke="#38424c"/>
+            <text x="519" y="56" text-anchor="middle" fill="#f4f7f8" font-family="Inter, sans-serif" font-size="11.5" font-weight="700">Per-mode</text>
+            <text x="519" y="72" text-anchor="middle" fill="#f4f7f8" font-family="Inter, sans-serif" font-size="11.5" font-weight="700">scoring</text>
+            <rect x="608" y="34" width="104" height="52" rx="2" fill="#151a20" stroke="#38424c"/>
+            <text x="660" y="56" text-anchor="middle" fill="#f4f7f8" font-family="Inter, sans-serif" font-size="11.5" font-weight="700">Diversify</text>
+            <text x="660" y="72" text-anchor="middle" fill="#c4b5fd" font-family="JetBrains Mono, monospace" font-size="9">+ reasons</text>
+            <line x1="130" y1="60" x2="156" y2="60" stroke="#c4b5fd" stroke-width="1.3" marker-end="url(#arr3)"/>
+            <line x1="280" y1="60" x2="306" y2="60" stroke="#c4b5fd" stroke-width="1.3" marker-end="url(#arr3)"/>
+            <line x1="430" y1="60" x2="456" y2="60" stroke="#c4b5fd" stroke-width="1.3" marker-end="url(#arr3)"/>
+            <line x1="580" y1="60" x2="606" y2="60" stroke="#c4b5fd" stroke-width="1.3" marker-end="url(#arr3)"/>
+            <text x="69" y="104" text-anchor="middle" fill="#727d87" font-family="JetBrains Mono, monospace" font-size="8.5">every AC + attempt</text>
+            <text x="219" y="104" text-anchor="middle" fill="#727d87" font-family="JetBrains Mono, monospace" font-size="8.5">decay · clean · P75</text>
+            <text x="369" y="104" text-anchor="middle" fill="#727d87" font-family="JetBrains Mono, monospace" font-size="8.5">band · tags · year</text>
+            <text x="519" y="104" text-anchor="middle" fill="#727d87" font-family="JetBrains Mono, monospace" font-size="8.5">7 modes</text>
+            <text x="660" y="104" text-anchor="middle" fill="#727d87" font-family="JetBrains Mono, monospace" font-size="8.5">tag/rating caps</text>
+          </svg>
+        </div>
+
+        <h3>The skill model</h3>
         <p>
-          CPOS considers only <strong>unsolved</strong> problems rated roughly −250 to +350
-          around your level (targeting ~+100 above you). Each candidate is scored on:
+          Every accepted problem contributes a <code>(rating, weight)</code> sample to each
+          of its tags. The weight rewards recent, clean solves:
         </p>
+        <div class="codeblock">
+          <pre><code>weight = decay × clean
+decay  = 0.5 ^ (days_since_solve / 240)     <span class="cmt"># 240-day half-life, floored at 0.05</span>
+clean  = 1 / (1 + 0.3 × wrong_attempts)     <span class="cmt"># 1 WA ≈ ×0.77, 4 WA ≈ ×0.45</span></code></pre>
+        </div>
+        <p>
+          A tag's <strong>skill</strong> is the weighted <strong>75th percentile</strong> of
+          those sample ratings, and your overall <strong>level</strong> is the same percentile
+          across everything you've solved, floored by your official CF rating (whichever is
+          higher; 1200 if there's no data). Tags you have <em>attempted but never solved</em>
+          are tracked as explicit weaknesses at <code>level − 300</code>. A tag is flagged
+          <strong>weak</strong> when it's unsolved, its skill trails your level by more than
+          150, or the evidence is thin despite failed attempts.
+        </p>
+
+        <h3>Candidate filters</h3>
+        <p>
+          Only <strong>unsolved, rated</strong> problems survive. Optional tag
+          include/exclude lists and a hard contest-year floor apply next. Without an explicit
+          rating range, the band runs from a mode-dependent floor (level −200 for most modes,
+          −250 for refresh, −400 for explore, none for upsolve) up to <strong>level +700</strong>.
+          Contest years missing from the cache are estimated by regression over known contest
+          ids, so the freshness filter works across the whole problemset.
+        </p>
+
+        <h3>Scoring signals</h3>
         <div class="table-scroll">
           <table>
-            <tr><th>Signal</th><th>What it means</th></tr>
-            <tr><td><strong>Weak topics</strong></td><td>Tags where your solve rate is low get the most weight — a topic you fail every time counts more than one you're half-comfortable with</td></tr>
-            <tr><td><strong>Multiple weak tags</strong></td><td>Problems combining several weak areas get a small bonus</td></tr>
-            <tr><td><strong>Unfinished attempts</strong></td><td>Problems you tried but didn't solve are boosted so you can finish what you started</td></tr>
-            <tr><td><strong>Rating fit</strong></td><td>Problems near your target practice rating score higher</td></tr>
-            <tr><td><strong>Popularity</strong></td><td>Well-known problems (many solves) are preferred — usually better written</td></tr>
+            <tr><th>Signal</th><th>How it's computed</th></tr>
+            <tr><td><strong>Learning-zone fit</strong></td><td>Gaussian on the gap between the problem's rating and the skill of its <em>weakest relevant tag</em> — each mode sets its own target gap and width (e.g. auto aims +200, push +350, explore −50)</td></tr>
+            <tr><td><strong>Weak-topic value</strong></td><td>How far the tag lags your level (scaled over 300 points) blended with how thin your evidence is; untouched core topics score maximum</td></tr>
+            <tr><td><strong>Contest freshness</strong></td><td><code>0.5^(age_years / 3)</code> — a 3-year half-life, so recent problemsets beat decade-old classics</td></tr>
+            <tr><td><strong>Popularity</strong></td><td>Log-scaled solve count, dampened below 200 solvers — well-tested problems are usually better written</td></tr>
+            <tr><td><strong>Spaced repetition</strong></td><td>Tags you own but haven't touched ramp up over 120 days of inactivity (refresh mode)</td></tr>
+            <tr><td><strong>Unfinished attempts</strong></td><td>Problems you tried but never got accepted decay on a 180-day half-life (upsolve mode)</td></tr>
           </table>
         </div>
         <p>
-          Top scorers are then <strong>diversified</strong> — CPOS caps how many problems
-          share the same primary tag or exact rating, so the list is never fifteen identical
-          DP problems. With no solves yet (cold start), CPOS falls back to popular problems
-          around 1200 spread across tags until your history fills in.
+          The top scorers are then <strong>diversified</strong>: at most
+          <code>max(count/4, 2)</code> picks may share a primary tag or a 100-point rating
+          band, so the list is never fifteen identical DP problems. With no history at all
+          (cold start), scoring biases toward popular problems near rating 1200 until your
+          submissions fill the model in.
         </p>
 
-        <h3>Target — "where am I, what's left, in what order?"</h3>
+        <h3>Seven query modes</h3>
+        <div class="table-scroll">
+          <table>
+            <tr><th>Mode</th><th>What it surfaces</th></tr>
+            <tr><td><code>auto</code></td><td>Balanced mix: learning zone, weak topics, fresh problems</td></tr>
+            <tr><td><code>weakness</code></td><td>Your lagging tags, targeted just above their skill</td></tr>
+            <tr><td><code>push</code></td><td>Stretch problems ~350 above your strongest, well-practiced tags</td></tr>
+            <tr><td><code>refresh</code></td><td>Rusty topics — solid tags with no recent activity</td></tr>
+            <tr><td><code>upsolve</code></td><td>Problems you attempted but never got accepted</td></tr>
+            <tr><td><code>explore</code></td><td>Core topics you've never touched, at entry-level ratings</td></tr>
+            <tr><td><code>plan</code></td><td>The goal-driven curriculum (below), in step order</td></tr>
+          </table>
+        </div>
+
+        <h3>Goal plans (plan mode)</h3>
         <p>
-          Set a goal on the Target tab — cycle rank milestones with <kbd>[</kbd>/<kbd>]</kbd>
-          or press <kbd>t</kbd> to type an exact rating. CPOS shows:
+          Set a goal — CF rank milestones or an exact rating (900–3500) — and the engine
+          builds a curriculum against a 33-topic map of which tags start to matter at which
+          rating (implementation at 900 … flows at 2300):
         </p>
         <ul>
-          <li><strong>Status</strong> — your effective level, the gap to the goal, an overall readiness %, and solves in the goal band</li>
-          <li><strong>Topics to cover</strong> — each prerequisite topic labelled <em>Ready / Developing / Gap / Untouched</em>, weakest first, with the rating it starts to matter at</li>
-          <li><strong>A step-by-step plan</strong> — unsolved problems on rating rungs from your level to the goal, labelled <em>Base → Build → Push → Target</em>; press <kbd>Enter</kbd> on a step to start it</li>
+          <li><strong>Readiness %</strong> — every in-scope topic is scored <em>Ready</em> (1.0), <em>Developing</em> (0.6), <em>Gap</em> (0.25), or <em>Untouched</em> (0.0), weighted by how relevant it is to the goal rating, and averaged. Labels come from solves at level: 3+ at-level solves → Ready, 1–2 → Developing, none at level → Gap, none ever → Untouched.</li>
+          <li><strong>Rating rungs</strong> — unsolved problems on 100-point rungs from your level to the goal (at most the 5 rungs nearest it), staged <em>Base → Build → Push → Target</em>, weak and uncovered topics front-loaded, max two problems per topic per rung.</li>
+          <li><strong>Start anywhere</strong> — press <kbd>Enter</kbd> on a step in the TUI to jump into the normal solve flow.</li>
         </ul>
         <div class="note">
-          <strong>CF rating vs Practice.</strong> The Target tab shows your official synced
-          Codeforces rating separately from its solve-derived <em>Practice</em> estimate.
-          Practice controls the difficulty ramp; only the real rating measures the gap to a
-          goal. The plan is Codeforces-only, since CSES tasks don't carry ratings.
+          <strong>Level vs CF rating.</strong> The solve-derived level only chooses problem
+          difficulty; it never substitutes for your official rating. Only the synced CF
+          rating measures the gap to a goal or marks it reached. Plans are Codeforces-only,
+          since CSES tasks don't carry ratings.
         </div>
+
+        <h3>Using the engine</h3>
+        <p>
+          <strong>TUI</strong> — the Practice tab (keys above). <strong>Browser</strong> —
+          the popup's Recommend tab queries the same engine with mode, tag autocomplete,
+          rating range, freshness, and count; it needs the terminal app running, since only
+          the TUI holds the submission cache. <strong>API</strong> — query it yourself:
+        </p>
+        <div class="codeblock">
+          <div class="codeblock-head"><span>shell</span><button class="copy-btn" data-copy="curl 'http://127.0.0.1:27121/recommend?mode=weakness&count=10'">Copy</button></div>
+          <pre><code>curl 'http://127.0.0.1:27121/recommend?mode=weakness&amp;count=10'</code></pre>
+        </div>
+        <div class="table-scroll">
+          <table>
+            <tr><th>Parameter</th><th>Values</th></tr>
+            <tr><td><code>mode</code></td><td><code>auto</code> · <code>weakness</code> · <code>push</code> · <code>refresh</code> · <code>upsolve</code> · <code>explore</code> · <code>plan</code></td></tr>
+            <tr><td><code>tags</code> / <code>exclude</code></td><td>Comma-separated CF tags to require / exclude</td></tr>
+            <tr><td><code>min</code> / <code>max</code></td><td>Explicit rating band</td></tr>
+            <tr><td><code>year</code></td><td>Contest-year floor (hard filter)</td></tr>
+            <tr><td><code>count</code></td><td>1–100, default 30</td></tr>
+            <tr><td><code>goal</code></td><td>Target rating, 900–3500</td></tr>
+          </table>
+        </div>
+        <p>
+          The response contains a summary (level, official rating, goal, readiness %, weak
+          and strong tags) and the scored recommendations, each with its reasons and contest
+          year.
+        </p>
       </section>
 
       <!-- ───────────────────────── Architecture ───────────────────────── -->
@@ -600,6 +816,7 @@ cpos</code></pre>
             <tr><td><code>POST</code></td><td><code>/pending-submit/consumed</code></td><td>Clear the queue after autofill completes</td></tr>
             <tr><td><code>GET/POST</code></td><td><code>/config</code></td><td>Read or save the default language and shared per-language templates</td></tr>
             <tr><td><code>GET/POST</code></td><td><code>/challenges</code></td><td>VS Code-only mirror for Compete races and matching preferences</td></tr>
+            <tr><td><code>POST</code></td><td><code>/run</code></td><td>VS Code-only: compile and run supplied code against supplied samples (powers the in-browser editor's Run and the trace player)</td></tr>
             <tr><td><code>GET</code></td><td><code>/recommend</code></td><td>Central practice engine (TUI only): query → scored, reasoned recommendations</td></tr>
             <tr><td><code>GET</code></td><td><code>/health</code></td><td>Liveness check</td></tr>
           </table>
@@ -616,11 +833,18 @@ cpos</code></pre>
             <tr><td><code>~/.cpos-vscode/</code></td><td>VS Code sample cache, problem metadata, compile artifacts</td></tr>
           </table>
         </div>
+        <h3>The interactive architecture graph</h3>
         <p>
-          Want the full picture? The
-          <a href="/architecture">interactive architecture graph</a> maps every module and
-          how it connects — generated from the code, with a link from each node to its
-          source file.
+          For the full picture, open the
+          <a href="/architecture">interactive architecture graph</a> — a navigable knowledge
+          graph of the entire codebase: <strong>4,484 nodes and 11,100 edges across 174
+          detected communities</strong>, covering a 206-file corpus at 100% extraction.
+          Communities map onto the real subsystems (TUI event loop, capture server, SQLite
+          cache layer, the recommender engine, the popup hub, the self-update engine, …),
+          each node links to its source file, and search works across everything. It's
+          generated from the code by <code>tools/build_graph.py</code> and served as one
+          compact data file, so it stays in sync with the repository and adds no runtime
+          dependency.
         </p>
       </section>
 
@@ -755,8 +979,9 @@ codeforces = <span class="hl">"your_handle"</span></code></pre>
           funds new judges, contest mode, and ongoing maintenance.
         </p>
         <p>
-          Roadmap highlights: AtCoder &amp; CodeChef support, contest mode with per-problem
-          timers, and reading submission verdicts back into CPOS.
+          Roadmap highlights: AtCoder in the terminal app (capture, submit, and the
+          visualizer already work in the browser and VS Code), CodeChef support, contest
+          mode with per-problem timers, and reading submission verdicts back into CPOS.
         </p>
       </section>
 

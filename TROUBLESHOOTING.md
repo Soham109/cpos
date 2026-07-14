@@ -261,10 +261,10 @@ prevents stale tab rows or borders from appearing twice. If you use a terminal
 editor, configure it directly (for example `editor = "nvim {file}"`) so CPOS
 runs it in the same terminal session instead of asking the OS to open the file.
 
-### Target says my rating is higher than my Codeforces rating
+### Practice says my level is higher than my Codeforces rating
 
-The Target tab distinguishes **CF rating** from **Practice**, a solve-derived
-difficulty estimate. Only the official rating synced from the configured
+The Practice tab header distinguishes **CF rating** from the solve-derived
+**level** estimate. Only the official rating synced from the configured
 Codeforces handle determines the goal gap or whether a goal has been reached.
 If CF rating is shown as `—`, verify the handle in Config and press `r` to sync.
 

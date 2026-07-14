@@ -5,7 +5,7 @@ All notable changes to CPOS are documented here. Components are versioned indepe
 | Component | Current version | Version file |
 | --- | --- | --- |
 | Terminal app | 0.3.0 | `Cargo.toml` |
-| VS Code extension | 0.6.1 | `extensions/vscode/package.json` |
+| VS Code extension | 0.6.2 | `extensions/vscode/package.json` |
 | Browser companion (Chrome) | 0.17.0 | `extensions/chrome/manifest.json` |
 | Browser companion (Firefox) | 0.17.0 | `extensions/firefox/manifest.json` |
 
@@ -26,6 +26,11 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 - **TUI: Recommend and Target tabs merged into one Practice tab** driven by the engine — mode strip (`m` cycles), goal milestones (`[`/`]`, `t` for custom), tag filter (`f`), freshness floor (`y`), with skill/readiness header and per-problem reasons.
+
+## VS Code extension 0.6.2 — 2026-07-05
+
+### Fixed
+- **Test-case boxes size to their content.** Sample input/expected-output boxes now grow with the number of lines (matched heights per pair, capped at 300px) instead of using a fixed viewport-based height, so short samples no longer waste panel space and long ones stay scrollable.
 
 ## VS Code extension 0.6.1 — 2026-07-05
 
