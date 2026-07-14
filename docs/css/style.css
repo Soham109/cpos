@@ -26,41 +26,29 @@
   --primary-bg-hover: #0277aa;
   --on-primary: #ffffff;
   --shadow: rgba(0, 0, 0, 0.42);
-  --glass-hi: rgba(255, 255, 255, 0.09);
-  --glass-lo: rgba(255, 255, 255, 0.03);
-  --glass-hi-hover: rgba(255, 255, 255, 0.14);
-  --glass-lo-hover: rgba(255, 255, 255, 0.06);
+  --glass-bg: rgba(255, 255, 255, 0.06);
+  --glass-bg-hover: rgba(255, 255, 255, 0.11);
   --glass-line: rgba(255, 255, 255, 0.16);
   --glass-line-hover: rgba(255, 255, 255, 0.28);
-  --glass-shine: rgba(255, 255, 255, 0.18);
-  --glass-glow: rgba(0, 0, 0, 0.4);
-  --glass-blue-text: #d3eefc;
-  --glass-blue-hi: rgba(56, 189, 248, 0.2);
-  --glass-blue-lo: rgba(8, 145, 209, 0.07);
-  --glass-blue-hi-hover: rgba(56, 189, 248, 0.3);
-  --glass-blue-lo-hover: rgba(8, 145, 209, 0.14);
-  --glass-blue-line: rgba(125, 211, 252, 0.35);
-  --glass-blue-line-hover: rgba(125, 211, 252, 0.55);
-  --glass-blue-shine: rgba(186, 230, 253, 0.3);
-  --glass-blue-glow: rgba(14, 165, 233, 0.35);
+  --glass-shine: rgba(255, 255, 255, 0.14);
+  --glass-accent-text: #e4defc;
+  --glass-accent-bg: rgba(196, 181, 253, 0.1);
+  --glass-accent-bg-hover: rgba(196, 181, 253, 0.17);
+  --glass-accent-line: rgba(196, 181, 253, 0.32);
+  --glass-accent-line-hover: rgba(196, 181, 253, 0.5);
+  --glass-accent-shine: rgba(230, 222, 255, 0.22);
   --glass-pink-text: #fbd3e8;
-  --glass-pink-hi: rgba(244, 114, 182, 0.17);
-  --glass-pink-lo: rgba(219, 97, 162, 0.06);
-  --glass-pink-hi-hover: rgba(244, 114, 182, 0.26);
-  --glass-pink-lo-hover: rgba(219, 97, 162, 0.12);
-  --glass-pink-line: rgba(244, 114, 182, 0.35);
-  --glass-pink-line-hover: rgba(244, 114, 182, 0.55);
-  --glass-pink-shine: rgba(251, 207, 232, 0.28);
-  --glass-pink-glow: rgba(244, 114, 182, 0.3);
+  --glass-pink-bg: rgba(244, 114, 182, 0.1);
+  --glass-pink-bg-hover: rgba(244, 114, 182, 0.17);
+  --glass-pink-line: rgba(244, 114, 182, 0.32);
+  --glass-pink-line-hover: rgba(244, 114, 182, 0.5);
+  --glass-pink-shine: rgba(251, 207, 232, 0.2);
   --glass-blurple-text: #dde2fe;
-  --glass-blurple-hi: rgba(99, 112, 247, 0.24);
-  --glass-blurple-lo: rgba(88, 101, 242, 0.09);
-  --glass-blurple-hi-hover: rgba(99, 112, 247, 0.34);
-  --glass-blurple-lo-hover: rgba(88, 101, 242, 0.16);
-  --glass-blurple-line: rgba(129, 140, 248, 0.4);
-  --glass-blurple-line-hover: rgba(129, 140, 248, 0.6);
-  --glass-blurple-shine: rgba(199, 210, 254, 0.3);
-  --glass-blurple-glow: rgba(88, 101, 242, 0.35);
+  --glass-blurple-bg: rgba(129, 140, 248, 0.12);
+  --glass-blurple-bg-hover: rgba(129, 140, 248, 0.2);
+  --glass-blurple-line: rgba(129, 140, 248, 0.35);
+  --glass-blurple-line-hover: rgba(129, 140, 248, 0.55);
+  --glass-blurple-shine: rgba(199, 210, 254, 0.2);
   --font: "Inter", system-ui, sans-serif;
   --display: "Instrument Sans", var(--font);
   --mono: "JetBrains Mono", ui-monospace, monospace;
@@ -95,41 +83,29 @@
   --primary-bg-hover: #0277aa;
   --on-primary: #ffffff;
   --shadow: rgba(15, 23, 42, 0.14);
-  --glass-hi: rgba(16, 21, 27, 0.06);
-  --glass-lo: rgba(16, 21, 27, 0.02);
-  --glass-hi-hover: rgba(16, 21, 27, 0.1);
-  --glass-lo-hover: rgba(16, 21, 27, 0.05);
+  --glass-bg: rgba(16, 21, 27, 0.04);
+  --glass-bg-hover: rgba(16, 21, 27, 0.08);
   --glass-line: rgba(16, 21, 27, 0.18);
   --glass-line-hover: rgba(16, 21, 27, 0.32);
   --glass-shine: rgba(255, 255, 255, 0.7);
-  --glass-glow: rgba(15, 23, 42, 0.12);
-  --glass-blue-text: #075985;
-  --glass-blue-hi: rgba(8, 145, 209, 0.16);
-  --glass-blue-lo: rgba(8, 145, 209, 0.06);
-  --glass-blue-hi-hover: rgba(8, 145, 209, 0.24);
-  --glass-blue-lo-hover: rgba(8, 145, 209, 0.1);
-  --glass-blue-line: rgba(8, 145, 209, 0.4);
-  --glass-blue-line-hover: rgba(8, 145, 209, 0.6);
-  --glass-blue-shine: rgba(255, 255, 255, 0.65);
-  --glass-blue-glow: rgba(8, 145, 209, 0.2);
+  --glass-accent-text: #4c3d99;
+  --glass-accent-bg: rgba(124, 111, 189, 0.1);
+  --glass-accent-bg-hover: rgba(124, 111, 189, 0.16);
+  --glass-accent-line: rgba(124, 111, 189, 0.38);
+  --glass-accent-line-hover: rgba(124, 111, 189, 0.58);
+  --glass-accent-shine: rgba(255, 255, 255, 0.65);
   --glass-pink-text: #a61e4d;
-  --glass-pink-hi: rgba(214, 51, 108, 0.13);
-  --glass-pink-lo: rgba(214, 51, 108, 0.05);
-  --glass-pink-hi-hover: rgba(214, 51, 108, 0.2);
-  --glass-pink-lo-hover: rgba(214, 51, 108, 0.09);
-  --glass-pink-line: rgba(214, 51, 108, 0.38);
-  --glass-pink-line-hover: rgba(214, 51, 108, 0.58);
+  --glass-pink-bg: rgba(214, 51, 108, 0.08);
+  --glass-pink-bg-hover: rgba(214, 51, 108, 0.14);
+  --glass-pink-line: rgba(214, 51, 108, 0.35);
+  --glass-pink-line-hover: rgba(214, 51, 108, 0.55);
   --glass-pink-shine: rgba(255, 255, 255, 0.65);
-  --glass-pink-glow: rgba(214, 51, 108, 0.18);
   --glass-blurple-text: #3d46b8;
-  --glass-blurple-hi: rgba(88, 101, 242, 0.14);
-  --glass-blurple-lo: rgba(88, 101, 242, 0.05);
-  --glass-blurple-hi-hover: rgba(88, 101, 242, 0.22);
-  --glass-blurple-lo-hover: rgba(88, 101, 242, 0.09);
-  --glass-blurple-line: rgba(88, 101, 242, 0.4);
-  --glass-blurple-line-hover: rgba(88, 101, 242, 0.6);
+  --glass-blurple-bg: rgba(88, 101, 242, 0.08);
+  --glass-blurple-bg-hover: rgba(88, 101, 242, 0.14);
+  --glass-blurple-line: rgba(88, 101, 242, 0.35);
+  --glass-blurple-line-hover: rgba(88, 101, 242, 0.55);
   --glass-blurple-shine: rgba(255, 255, 255, 0.65);
-  --glass-blurple-glow: rgba(88, 101, 242, 0.18);
 }
 
 *,
@@ -443,18 +419,15 @@ code {
 .nav-cta,
 .btn-copy {
   --g-text: var(--text);
-  --g-hi: var(--glass-hi);
-  --g-lo: var(--glass-lo);
-  --g-hi-hover: var(--glass-hi-hover);
-  --g-lo-hover: var(--glass-lo-hover);
+  --g-bg: var(--glass-bg);
+  --g-bg-hover: var(--glass-bg-hover);
   --g-line: var(--glass-line);
   --g-line-hover: var(--glass-line-hover);
   --g-shine: var(--glass-shine);
-  --g-glow: var(--glass-glow);
   color: var(--g-text);
   border: 1px solid var(--g-line);
-  background: linear-gradient(180deg, var(--g-hi), var(--g-lo));
-  box-shadow: inset 0 1px 0 var(--g-shine), 0 14px 30px -16px var(--g-glow);
+  background: var(--g-bg);
+  box-shadow: inset 0 1px 0 var(--g-shine);
   -webkit-backdrop-filter: blur(14px) saturate(1.4);
   backdrop-filter: blur(14px) saturate(1.4);
   transition: background 0.18s ease, border-color 0.18s ease,
@@ -466,7 +439,7 @@ code {
 .nav-cta:hover,
 .btn-copy:hover {
   border-color: var(--g-line-hover);
-  background: linear-gradient(180deg, var(--g-hi-hover), var(--g-lo-hover));
+  background: var(--g-bg-hover);
 }
 
 .btn:focus-visible,
@@ -507,39 +480,30 @@ code {
 .btn-primary,
 .nav-cta,
 .install-link {
-  --g-text: var(--glass-blue-text);
-  --g-hi: var(--glass-blue-hi);
-  --g-lo: var(--glass-blue-lo);
-  --g-hi-hover: var(--glass-blue-hi-hover);
-  --g-lo-hover: var(--glass-blue-lo-hover);
-  --g-line: var(--glass-blue-line);
-  --g-line-hover: var(--glass-blue-line-hover);
-  --g-shine: var(--glass-blue-shine);
-  --g-glow: var(--glass-blue-glow);
+  --g-text: var(--glass-accent-text);
+  --g-bg: var(--glass-accent-bg);
+  --g-bg-hover: var(--glass-accent-bg-hover);
+  --g-line: var(--glass-accent-line);
+  --g-line-hover: var(--glass-accent-line-hover);
+  --g-shine: var(--glass-accent-shine);
 }
 
 .btn-sponsor {
   --g-text: var(--glass-pink-text);
-  --g-hi: var(--glass-pink-hi);
-  --g-lo: var(--glass-pink-lo);
-  --g-hi-hover: var(--glass-pink-hi-hover);
-  --g-lo-hover: var(--glass-pink-lo-hover);
+  --g-bg: var(--glass-pink-bg);
+  --g-bg-hover: var(--glass-pink-bg-hover);
   --g-line: var(--glass-pink-line);
   --g-line-hover: var(--glass-pink-line-hover);
   --g-shine: var(--glass-pink-shine);
-  --g-glow: var(--glass-pink-glow);
 }
 
 .btn-discord {
   --g-text: var(--glass-blurple-text);
-  --g-hi: var(--glass-blurple-hi);
-  --g-lo: var(--glass-blurple-lo);
-  --g-hi-hover: var(--glass-blurple-hi-hover);
-  --g-lo-hover: var(--glass-blurple-lo-hover);
+  --g-bg: var(--glass-blurple-bg);
+  --g-bg-hover: var(--glass-blurple-bg-hover);
   --g-line: var(--glass-blurple-line);
   --g-line-hover: var(--glass-blurple-line-hover);
   --g-shine: var(--glass-blurple-shine);
-  --g-glow: var(--glass-blurple-glow);
 }
 
 /* Hero */
@@ -1156,14 +1120,11 @@ code {
 
 .install-link-secondary {
   --g-text: var(--text);
-  --g-hi: var(--glass-hi);
-  --g-lo: var(--glass-lo);
-  --g-hi-hover: var(--glass-hi-hover);
-  --g-lo-hover: var(--glass-lo-hover);
+  --g-bg: var(--glass-bg);
+  --g-bg-hover: var(--glass-bg-hover);
   --g-line: var(--glass-line);
   --g-line-hover: var(--glass-line-hover);
   --g-shine: var(--glass-shine);
-  --g-glow: var(--glass-glow);
 }
 
 @media (max-width: 980px) {

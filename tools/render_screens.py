@@ -109,7 +109,7 @@ def render(grid, out_path, title):
     display_h = int(img.height * display_w / img.width)
     web = img.resize((display_w, display_h), Image.LANCZOS)
     base = os.path.splitext(os.path.basename(out_path))[0]
-    if base in {"dashboard", "problems", "contests", "analytics", "recommend"}:
+    if base in {"dashboard", "problems", "contests", "analytics", "practice", "recommend"}:
         web.save(os.path.join(web_dir, f"{base}.webp"), "WEBP", quality=92, method=6)
         web.save(os.path.join(web_dir, f"{base}.png"), "PNG", optimize=True)
 
