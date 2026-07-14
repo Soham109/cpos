@@ -168,7 +168,7 @@
 
         <h3>The three clients on one machine</h3>
         <div class="diagram">
-          <svg viewBox="0 0 720 330" role="img" aria-label="CPOS architecture: the browser companion talks to the VS Code extension on port 27122 and the terminal app on port 27121; both apps share the same config and cache directories.">
+          <svg viewBox="0 0 720 352" role="img" aria-label="CPOS architecture: the browser companion talks to the VS Code extension on port 27122 and the terminal app on port 27121; both apps share the same config and cache directories.">
             <defs>
               <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
                 <path d="M0 0L10 5L0 10z" fill="#727d87"/>
@@ -178,35 +178,35 @@
               </marker>
             </defs>
             <!-- judge sites -->
-            <rect x="250" y="12" width="220" height="44" rx="2" fill="#111419" stroke="#252c34"/>
-            <text x="360" y="31" text-anchor="middle" fill="#727d87" font-family="JetBrains Mono, monospace" font-size="10">public judge pages</text>
-            <text x="360" y="46" text-anchor="middle" fill="#a8b0b8" font-family="JetBrains Mono, monospace" font-size="11.5" font-weight="600">Codeforces · CSES · AtCoder</text>
+            <rect x="250" y="10" width="220" height="44" rx="2" fill="#111419" stroke="#252c34"/>
+            <text x="360" y="29" text-anchor="middle" fill="#727d87" font-family="JetBrains Mono, monospace" font-size="10">public judge pages</text>
+            <text x="360" y="44" text-anchor="middle" fill="#a8b0b8" font-family="JetBrains Mono, monospace" font-size="11.5" font-weight="600">Codeforces · CSES · AtCoder</text>
+            <line x1="360" y1="56" x2="360" y2="86" stroke="#727d87" stroke-width="1.3" marker-end="url(#arr)" marker-start="url(#arr)"/>
             <!-- browser companion -->
-            <rect x="235" y="96" width="250" height="58" rx="2" fill="#151a20" stroke="#38424c"/>
-            <text x="360" y="120" text-anchor="middle" fill="#f4f7f8" font-family="Inter, sans-serif" font-size="13" font-weight="700">Browser companion</text>
-            <text x="360" y="139" text-anchor="middle" fill="#727d87" font-family="JetBrains Mono, monospace" font-size="10">reads DOM · autofills submit form</text>
+            <rect x="235" y="88" width="250" height="56" rx="2" fill="#151a20" stroke="#38424c"/>
+            <text x="360" y="111" text-anchor="middle" fill="#f4f7f8" font-family="Inter, sans-serif" font-size="13" font-weight="700">Browser companion</text>
+            <text x="360" y="130" text-anchor="middle" fill="#727d87" font-family="JetBrains Mono, monospace" font-size="10">reads DOM · autofills submit form</text>
+            <!-- orthogonal split: companion down, across, down into both apps -->
+            <path d="M360 144 V166 H180 V206" fill="none" stroke="#c4b5fd" stroke-width="1.3" marker-end="url(#arrA)"/>
+            <path d="M360 166 H540 V206" fill="none" stroke="#c4b5fd" stroke-width="1.3" marker-end="url(#arrA)"/>
+            <text x="172" y="192" text-anchor="end" fill="#a8b0b8" font-family="JetBrains Mono, monospace" font-size="9.5">capture · submit poll</text>
+            <text x="548" y="192" text-anchor="start" fill="#a8b0b8" font-family="JetBrains Mono, monospace" font-size="9.5">capture · submit poll</text>
             <!-- vscode -->
-            <rect x="60" y="216" width="240" height="58" rx="2" fill="#151a20" stroke="#38424c"/>
-            <text x="180" y="240" text-anchor="middle" fill="#f4f7f8" font-family="Inter, sans-serif" font-size="13" font-weight="700">VS Code extension</text>
-            <text x="180" y="259" text-anchor="middle" fill="#c4b5fd" font-family="JetBrains Mono, monospace" font-size="10.5">127.0.0.1:27122</text>
+            <rect x="60" y="208" width="240" height="58" rx="2" fill="#151a20" stroke="#38424c"/>
+            <text x="180" y="232" text-anchor="middle" fill="#f4f7f8" font-family="Inter, sans-serif" font-size="13" font-weight="700">VS Code extension</text>
+            <text x="180" y="251" text-anchor="middle" fill="#c4b5fd" font-family="JetBrains Mono, monospace" font-size="10.5">127.0.0.1:27122</text>
             <!-- tui -->
-            <rect x="420" y="216" width="240" height="58" rx="2" fill="#151a20" stroke="#38424c"/>
-            <text x="540" y="240" text-anchor="middle" fill="#f4f7f8" font-family="Inter, sans-serif" font-size="13" font-weight="700">Terminal app (TUI)</text>
-            <text x="540" y="259" text-anchor="middle" fill="#c4b5fd" font-family="JetBrains Mono, monospace" font-size="10.5">127.0.0.1:27121</text>
+            <rect x="420" y="208" width="240" height="58" rx="2" fill="#151a20" stroke="#38424c"/>
+            <text x="540" y="232" text-anchor="middle" fill="#f4f7f8" font-family="Inter, sans-serif" font-size="13" font-weight="700">Terminal app (TUI)</text>
+            <text x="540" y="251" text-anchor="middle" fill="#c4b5fd" font-family="JetBrains Mono, monospace" font-size="10.5">127.0.0.1:27121</text>
+            <!-- forward captures -->
+            <line x1="302" y1="244" x2="418" y2="244" stroke="#727d87" stroke-width="1.3" marker-end="url(#arr)" marker-start="url(#arr)"/>
+            <text x="360" y="236" text-anchor="middle" fill="#727d87" font-family="JetBrains Mono, monospace" font-size="9.5">forward captures</text>
             <!-- shared dirs -->
-            <rect x="250" y="298" width="220" height="26" rx="2" fill="#111419" stroke="#252c34"/>
-            <text x="360" y="315" text-anchor="middle" fill="#727d87" font-family="JetBrains Mono, monospace" font-size="10">shared config · templates · SQLite cache</text>
-            <!-- edges -->
-            <line x1="360" y1="56" x2="360" y2="94" stroke="#727d87" stroke-width="1.3" marker-end="url(#arr)" marker-start="url(#arr)"/>
-            <line x1="300" y1="154" x2="205" y2="214" stroke="#c4b5fd" stroke-width="1.3" marker-end="url(#arrA)"/>
-            <line x1="420" y1="154" x2="515" y2="214" stroke="#c4b5fd" stroke-width="1.3" marker-end="url(#arrA)"/>
-            <line x1="300" y1="245" x2="418" y2="245" stroke="#727d87" stroke-width="1.3" marker-end="url(#arr)" marker-start="url(#arr)"/>
-            <line x1="230" y1="274" x2="290" y2="300" stroke="#38424c" stroke-width="1.2"/>
-            <line x1="490" y1="274" x2="430" y2="300" stroke="#38424c" stroke-width="1.2"/>
-            <!-- edge labels -->
-            <text x="215" y="180" text-anchor="middle" fill="#a8b0b8" font-family="JetBrains Mono, monospace" font-size="9.5">capture / submit poll</text>
-            <text x="508" y="180" text-anchor="middle" fill="#a8b0b8" font-family="JetBrains Mono, monospace" font-size="9.5">capture / submit poll</text>
-            <text x="360" y="237" text-anchor="middle" fill="#727d87" font-family="JetBrains Mono, monospace" font-size="9.5">forward captures</text>
+            <line x1="180" y1="266" x2="180" y2="306" stroke="#38424c" stroke-width="1.2"/>
+            <line x1="540" y1="266" x2="540" y2="306" stroke="#38424c" stroke-width="1.2"/>
+            <rect x="120" y="306" width="480" height="30" rx="2" fill="#111419" stroke="#252c34"/>
+            <text x="360" y="325" text-anchor="middle" fill="#727d87" font-family="JetBrains Mono, monospace" font-size="10">shared config · templates · SQLite cache</text>
           </svg>
           <p class="diagram-caption">The companion polls both ports, so capture and submit work whether one or both apps are running.</p>
         </div>
@@ -220,29 +220,35 @@
           you would do by hand, minus the copy-paste:
         </p>
         <div class="diagram">
-          <svg viewBox="0 0 720 176" role="img" aria-label="Submit flow: the editor queues a submission at /pending-submit, the companion polls it, autofills the judge form in the logged-in tab, then confirms consumption.">
+          <svg viewBox="0 0 720 158" role="img" aria-label="Submit flow: the editor queues a submission at /pending-submit, the companion polls it, autofills the judge form in the logged-in tab, then confirms consumption.">
             <defs>
               <marker id="arr2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
                 <path d="M0 0L10 5L0 10z" fill="#c4b5fd"/>
               </marker>
             </defs>
-            <rect x="14" y="60" width="170" height="56" rx="2" fill="#151a20" stroke="#38424c"/>
-            <text x="99" y="84" text-anchor="middle" fill="#f4f7f8" font-family="Inter, sans-serif" font-size="12.5" font-weight="700">Editor / TUI</text>
-            <text x="99" y="102" text-anchor="middle" fill="#727d87" font-family="JetBrains Mono, monospace" font-size="9.5">Submit pressed</text>
-            <rect x="272" y="60" width="176" height="56" rx="2" fill="#151a20" stroke="#38424c"/>
-            <text x="360" y="84" text-anchor="middle" fill="#f4f7f8" font-family="Inter, sans-serif" font-size="12.5" font-weight="700">Companion</text>
-            <text x="360" y="102" text-anchor="middle" fill="#727d87" font-family="JetBrains Mono, monospace" font-size="9.5">polls /pending-submit</text>
-            <rect x="536" y="60" width="170" height="56" rx="2" fill="#151a20" stroke="#38424c"/>
-            <text x="621" y="84" text-anchor="middle" fill="#f4f7f8" font-family="Inter, sans-serif" font-size="12.5" font-weight="700">Judge tab</text>
-            <text x="621" y="102" text-anchor="middle" fill="#727d87" font-family="JetBrains Mono, monospace" font-size="9.5">your logged-in session</text>
-            <line x1="184" y1="76" x2="270" y2="76" stroke="#c4b5fd" stroke-width="1.3" marker-end="url(#arr2)"/>
-            <line x1="270" y1="100" x2="184" y2="100" stroke="#c4b5fd" stroke-width="1.3" marker-end="url(#arr2)"/>
-            <line x1="448" y1="88" x2="534" y2="88" stroke="#c4b5fd" stroke-width="1.3" marker-end="url(#arr2)"/>
-            <text x="227" y="66" text-anchor="middle" fill="#a8b0b8" font-family="JetBrains Mono, monospace" font-size="9">1 · queue code</text>
-            <text x="227" y="118" text-anchor="middle" fill="#a8b0b8" font-family="JetBrains Mono, monospace" font-size="9">4 · consumed ✓</text>
-            <text x="491" y="78" text-anchor="middle" fill="#a8b0b8" font-family="JetBrains Mono, monospace" font-size="9">2 · autofill form</text>
-            <text x="491" y="104" text-anchor="middle" fill="#a8b0b8" font-family="JetBrains Mono, monospace" font-size="9">3 · submit</text>
-            <text x="360" y="150" text-anchor="middle" fill="#727d87" font-family="JetBrains Mono, monospace" font-size="9.5">passwords and cookies never leave the browser</text>
+            <rect x="14" y="34" width="168" height="56" rx="2" fill="#151a20" stroke="#38424c"/>
+            <text x="98" y="58" text-anchor="middle" fill="#f4f7f8" font-family="Inter, sans-serif" font-size="12.5" font-weight="700">Editor / TUI</text>
+            <text x="98" y="76" text-anchor="middle" fill="#727d87" font-family="JetBrains Mono, monospace" font-size="9.5">Submit pressed</text>
+            <rect x="266" y="34" width="188" height="56" rx="2" fill="#151a20" stroke="#38424c"/>
+            <text x="360" y="58" text-anchor="middle" fill="#f4f7f8" font-family="Inter, sans-serif" font-size="12.5" font-weight="700">Companion</text>
+            <text x="360" y="76" text-anchor="middle" fill="#727d87" font-family="JetBrains Mono, monospace" font-size="9.5">polls /pending-submit</text>
+            <rect x="538" y="34" width="168" height="56" rx="2" fill="#151a20" stroke="#38424c"/>
+            <text x="622" y="58" text-anchor="middle" fill="#f4f7f8" font-family="Inter, sans-serif" font-size="12.5" font-weight="700">Judge tab</text>
+            <text x="622" y="76" text-anchor="middle" fill="#727d87" font-family="JetBrains Mono, monospace" font-size="9.5">your logged-in session</text>
+            <!-- editor <-> companion -->
+            <line x1="182" y1="52" x2="264" y2="52" stroke="#c4b5fd" stroke-width="1.3" marker-end="url(#arr2)"/>
+            <line x1="264" y1="74" x2="182" y2="74" stroke="#c4b5fd" stroke-width="1.3" marker-end="url(#arr2)"/>
+            <text x="223" y="26" text-anchor="middle" fill="#a8b0b8" font-family="JetBrains Mono, monospace" font-size="9">1 · queue code</text>
+            <line x1="223" y1="32" x2="223" y2="46" stroke="#252c34" stroke-width="1"/>
+            <text x="223" y="106" text-anchor="middle" fill="#a8b0b8" font-family="JetBrains Mono, monospace" font-size="9">4 · consumed ✓</text>
+            <line x1="223" y1="80" x2="223" y2="96" stroke="#252c34" stroke-width="1"/>
+            <!-- companion -> judge -->
+            <line x1="454" y1="62" x2="536" y2="62" stroke="#c4b5fd" stroke-width="1.3" marker-end="url(#arr2)"/>
+            <text x="495" y="26" text-anchor="middle" fill="#a8b0b8" font-family="JetBrains Mono, monospace" font-size="9">2 · autofill</text>
+            <line x1="495" y1="32" x2="495" y2="56" stroke="#252c34" stroke-width="1"/>
+            <text x="495" y="106" text-anchor="middle" fill="#a8b0b8" font-family="JetBrains Mono, monospace" font-size="9">3 · submit</text>
+            <line x1="495" y1="68" x2="495" y2="96" stroke="#252c34" stroke-width="1"/>
+            <text x="360" y="140" text-anchor="middle" fill="#727d87" font-family="JetBrains Mono, monospace" font-size="9.5">passwords and cookies never leave the browser</text>
           </svg>
         </div>
         <p>
