@@ -104,7 +104,7 @@ svg {
   width: 36px;
   height: 36px;
   border: 1px solid var(--line);
-  border-radius: 7px;
+  border-radius: 3px;
   color: var(--muted);
 }
 
@@ -130,7 +130,7 @@ svg {
 .dtop-logo img {
   width: 28px;
   height: 28px;
-  border-radius: 6px;
+  border-radius: 3px;
 }
 
 .dtop-logo .crumb {
@@ -157,7 +157,7 @@ svg {
   gap: 7px;
   min-height: 34px;
   padding: 0 11px;
-  border-radius: 7px;
+  border-radius: 3px;
   font-size: 0.84rem;
   font-weight: 600;
   color: var(--muted);
@@ -179,7 +179,7 @@ svg {
   min-height: 34px;
   padding: 0 12px;
   margin-left: 6px;
-  border-radius: 7px;
+  border-radius: 3px;
   font-size: 0.84rem;
   font-weight: 700;
   color: #e4defc;
@@ -238,7 +238,7 @@ svg {
   display: block;
   padding: 5px 10px;
   border-left: 2px solid transparent;
-  border-radius: 0 6px 6px 0;
+  border-radius: 0;
   color: var(--muted);
   font-size: 0.86rem;
   font-weight: 500;
@@ -399,7 +399,7 @@ svg {
   color: var(--text);
   background: var(--surface-3);
   border: 1px solid var(--line);
-  border-radius: 5px;
+  border-radius: 2px;
   padding: 1.5px 6px;
   white-space: nowrap;
 }
@@ -412,7 +412,7 @@ kbd {
   background: var(--surface-3);
   border: 1px solid var(--line-strong);
   border-bottom-width: 2px;
-  border-radius: 6px;
+  border-radius: 3px;
   padding: 2px 7px;
 }
 
@@ -421,7 +421,7 @@ kbd {
   position: relative;
   margin: 14px 0 20px;
   border: 1px solid var(--line);
-  border-radius: 9px;
+  border-radius: 3px;
   background: var(--code-bg);
   overflow: hidden;
 }
@@ -471,7 +471,7 @@ kbd {
   flex-shrink: 0;
   min-height: 24px;
   padding: 0 9px;
-  border-radius: 6px;
+  border-radius: 3px;
   border: 1px solid var(--glass-line);
   background: var(--glass-bg);
   color: var(--muted);
@@ -500,7 +500,7 @@ kbd {
   border-collapse: separate;
   border-spacing: 0;
   border: 1px solid var(--line);
-  border-radius: 9px;
+  border-radius: 3px;
   overflow: hidden;
   font-size: 0.87rem;
 }
@@ -538,7 +538,7 @@ kbd {
   padding: 13px 16px;
   border: 1px solid var(--line);
   border-left: 3px solid var(--accent);
-  border-radius: 8px;
+  border-radius: 3px;
   background: var(--surface);
   color: var(--muted);
   font-size: 0.9rem;
@@ -580,7 +580,7 @@ kbd {
   width: 27px;
   height: 27px;
   border: 1px solid var(--line-strong);
-  border-radius: 8px;
+  border-radius: 3px;
   background: var(--surface);
   color: var(--accent);
   font-family: var(--mono);
@@ -623,7 +623,7 @@ kbd {
 .card {
   padding: 16px;
   border: 1px solid var(--line);
-  border-radius: 9px;
+  border-radius: 3px;
   background: var(--surface);
 }
 
@@ -665,7 +665,7 @@ kbd {
   min-height: 30px;
   padding: 0 11px;
   border: 1px solid var(--line);
-  border-radius: 999px;
+  border-radius: 3px;
   background: var(--surface);
   color: var(--muted);
   font-family: var(--mono);
@@ -683,7 +683,7 @@ kbd {
   margin: 20px 0 24px;
   padding: 22px 18px;
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: 3px;
   background: var(--bg-raised);
   overflow-x: auto;
 }
