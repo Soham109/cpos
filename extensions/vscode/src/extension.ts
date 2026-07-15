@@ -2207,7 +2207,7 @@ async function fetchAndCacheSolution(): Promise<void> {
   // webview message slips through after the tab was hidden.
   if (isSolutionBlocked(meta)) return;
   if (solutionData?.problemId === meta.id &&
-      (solutionData.status === "done" || solutionData.status === "loading")) return;
+    (solutionData.status === "done" || solutionData.status === "loading")) return;
 
   solutionData = { problemId: meta.id, status: "loading", videos: [] };
   refreshActions();
@@ -2482,7 +2482,7 @@ async function openVisualizer(): Promise<void> {
 class CposActionsProvider implements vscode.WebviewViewProvider {
   private view?: vscode.WebviewView;
 
-  constructor(private readonly extensionUri: vscode.Uri) {}
+  constructor(private readonly extensionUri: vscode.Uri) { }
 
   resolveWebviewView(view: vscode.WebviewView): void {
     this.view = view;
@@ -2756,6 +2756,44 @@ class CposActionsProvider implements vscode.WebviewViewProvider {
     --bad: #d6b0b0;
     --warn: #d4c89c;
     --cf: #c4c4c4;
+  }
+  
+    /* ── Theme: Catppuccin Mocha (dark) ────────────────────────── */
+  body[data-theme="ctp-mocha"] {
+    --bg: #1e1e2e;
+    --panel: #181825;
+    --panel-2: #11111b;
+    --fg: #cdd6f4;
+    --dim: #a6adc8;
+    --border: #313244;
+    --border-soft: #45475a;
+    --accent: #cba6f7;
+    --accent-dim: #9b78db;
+    --accent-on: #1e1e2e;
+    --highlight: #313244;
+    --ok: #a6e3a1;
+    --bad: #f38ba8;
+    --warn: #f9e2af;
+    --cf: #89b4fa;
+  }
+
+  /* ── Theme: Catppuccin Latte (light) ───────────────────────── */
+  body[data-theme="ctp-latte"] {
+    --bg: #eff1f5;
+    --panel: #e6e9ef;
+    --panel-2: #dce0e8;
+    --fg: #4c4f69;
+    --dim: #6c6f85;
+    --border: #ccd0da;
+    --border-soft: #bcc0cc;
+    --accent: #8839ef;
+    --accent-dim: #7287fd;
+    --accent-on: #eff1f5;
+    --highlight: #ccd0da;
+    --ok: #40a02b;
+    --bad: #d20f39;
+    --warn: #df8e1d;
+    --cf: #1e66f5;
   }
 
   /* ── Theme: Native (matches your VS Code color theme) ─────── */
@@ -4164,12 +4202,14 @@ class CposActionsProvider implements vscode.WebviewViewProvider {
       + themebar();
   }
 
-  const THEMES = [
-    { id: 'cpos',     name: 'CPOS',     chips: ['#0c0c13', '#b794ff', '#7ee787'] },
-    { id: 'midnight', name: 'Midnight', chips: ['#0d1117', '#6cb6ff', '#6fd58a'] },
-    { id: 'amber',    name: 'Amber',    chips: ['#14110a', '#f0b860', '#b8c46a'] },
-    { id: 'paper',    name: 'Paper',    chips: ['#101010', '#e0e0e0', '#9a9a9a'] },
-    { id: 'native',   name: 'Native',   chips: ['#222', '#4daafc', '#4caf50'] }
+    const THEMES = [
+    { id: 'cpos',      name: 'CPOS',     chips: ['#0c0c13', '#b794ff', '#7ee787'] },
+    { id: 'midnight',  name: 'Midnight', chips: ['#0d1117', '#6cb6ff', '#6fd58a'] },
+    { id: 'amber',     name: 'Amber',    chips: ['#14110a', '#f0b860', '#b8c46a'] },
+    { id: 'paper',     name: 'Paper',    chips: ['#101010', '#e0e0e0', '#9a9a9a'] },
+    { id: 'native',    name: 'Native',   chips: ['#222',    '#4daafc', '#4caf50'] },
+    { id: 'ctp-mocha', name: 'Mocha',    chips: ['#1e1e2e', '#cba6f7', '#a6e3a1'] },
+    { id: 'ctp-latte', name: 'Latte',    chips: ['#eff1f5', '#8839ef', '#40a02b'] }
   ];
 
   function themebar() {

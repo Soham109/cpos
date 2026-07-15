@@ -121,7 +121,40 @@
       "--bad": "#ff7a7a",
       "--warn": "#e8b96a",
       "--cf": "#f49ac0"
-    }
+    },
+    // Catppuccin themes
+    catppuccin: {
+      name: "Catppuccin Mocha",
+      "--bg": "#1e1e2e",
+      "--panel": "#181825",
+      "--panel-2": "#11111b",
+      "--fg": "#cdd6f4",
+      "--dim": "#a6adc8",
+      "--border": "#313244",
+      "--accent": "#cba6f7",
+      "--accent-dim": "#7f4fa8",
+      "--accent-on": "#1e1e2e",
+      "--ok": "#a6e3a1",
+      "--bad": "#f38ba8",
+      "--warn": "#f9e2af",
+      "--cf": "#89b4fa"
+    },
+    catppuccin_latte: {
+      name: "Catppuccin Latte",
+      "--bg": "#eff1f5",
+      "--panel": "#e8ebf0",
+      "--panel-2": "#dce0e8",
+      "--fg": "#4c4f69",
+      "--dim": "#6c6f85",
+      "--border": "#ccd0da",
+      "--accent": "#8839ef",
+      "--accent-dim": "#6120b0",
+      "--accent-on": "#eff1f5",
+      "--ok": "#40a02b",
+      "--bad": "#d20f39",
+      "--warn": "#df8e1d",
+      "--cf": "#1e66f5"
+    },
   };
 
   // Structural token defaults — the geometry scale CPOS_STYLE_CORE applies. Kept
@@ -212,7 +245,7 @@
   })();
 
   // Preset ids only (excludes the special "custom" entry) — for swatch rows.
-  const PRESETS = ["purple", "github", "amber", "mono", "light", "ocean", "rose"];
+  const PRESETS = ["purple", "github", "amber", "mono", "light", "ocean", "rose", "catppuccin", "catppuccin_latte"];
   const api = { THEMES, DEFAULT_THEME, STRUCT_TOKENS, get, applyTheme, registerCustom, buildFromAccent, presets: () => PRESETS.slice(), list: () => Object.keys(THEMES) };
 
   // Works both as a content-script global and (via importScripts-free) the popup.

@@ -27,8 +27,17 @@ impl Default for Theme {
 }
 
 impl Theme {
-    pub const NAMES: [&'static str; 7] =
-        ["purple", "cyan", "green", "amber", "mono", "plain", "light"];
+    pub const NAMES: [&'static str; 9] = [
+        "purple",
+        "cyan",
+        "green",
+        "amber",
+        "mono",
+        "plain",
+        "light",
+        "catppuccin-mocha",
+        "catppuccin-latte",
+    ];
 
     pub fn from_name(name: &str) -> Theme {
         let base = Theme {
@@ -101,6 +110,36 @@ impl Theme {
                 success: Color::Rgb(56, 142, 60),
                 warning: Color::Rgb(184, 134, 11),
                 danger: Color::Rgb(229, 20, 0),
+            },
+            // Catppuccin Mocha — dark, warm-tinted canvas with mauve accent.
+            // Palette ref: https://github.com/catppuccin/catppuccin
+            "catppuccin-mocha" => Theme {
+                id: "catppuccin-mocha",
+                bg: Color::Rgb(30, 30, 46),        // base
+                fg: Color::Rgb(205, 214, 244),     // text
+                dim: Color::Rgb(108, 112, 134),    // overlay0
+                border: Color::Rgb(88, 91, 112),   // surface1
+                accent: Color::Rgb(203, 166, 247), // mauve
+                accent_dim: Color::Rgb(148, 112, 196), // mauve darkened
+                highlight_bg: Color::Rgb(49, 50, 68),  // surface0
+                success: Color::Rgb(166, 227, 161),    // green
+                warning: Color::Rgb(249, 226, 175),    // yellow
+                danger: Color::Rgb(243, 139, 168),     // red
+            },
+            // Catppuccin Latte — light, warm paper canvas with mauve accent.
+            // Palette ref: https://github.com/catppuccin/catppuccin
+            "catppuccin-latte" => Theme {
+                id: "catppuccin-latte",
+                bg: Color::Rgb(239, 241, 245),     // base
+                fg: Color::Rgb(76, 79, 105),       // text
+                dim: Color::Rgb(156, 160, 176),    // overlay0
+                border: Color::Rgb(188, 192, 204), // surface1
+                accent: Color::Rgb(136, 57, 239),  // mauve
+                accent_dim: Color::Rgb(100, 40, 180), // mauve darkened
+                highlight_bg: Color::Rgb(204, 208, 218), // surface0
+                success: Color::Rgb(64, 160, 43),  // green
+                warning: Color::Rgb(223, 142, 29), // yellow
+                danger: Color::Rgb(210, 15, 57),   // red
             },
             _ => base,
         }
