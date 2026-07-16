@@ -40,11 +40,20 @@ If something isn’t listed here, open a [GitHub issue](https://github.com/Soham
 2. **Python:** ensure `python` is on PATH (Windows often has no `python3` command).
 3. Check **Output → CPOS** for the compile/run command and errors.
 
-### Windows: `"Hello".exe` or Python `Invalid argument` / quotes in the path
+### Windows: `ld.exe: cannot open output file ...exe: Invalid argument`
 
-**What it means:** CPOS was wrapping compile/run paths in extra quotes. MinGW then tried to create a file literally named `"Hello".exe`, and Python looked for a mangled path under `.cpos-vscode\build\`.
+This can also appear as `"Hello".exe`, or as Python reporting `Invalid argument` or a path containing extra quotes.
 
-**Fix:** Update to VS Code extension **0.3.23+**.
+**What it means:** This is a Windows output-path problem, not an error in your solution. Older CPOS releases could wrap compile/run paths in extra quotes, causing MinGW to reject the executable path. A custom compile command can cause the same symptom if it writes `{output}` beside a file opened directly under `C:\Users` instead of CPOS's build directory.
+
+**Fix:**
+
+1. Update the CPOS VS Code extension to the latest version (**0.3.23+** contains the quoting fix), then use **Developer: Reload Window** in VS Code.
+2. Open a normal project folder in VS Code, such as `C:\Users\<you>\Documents\competitive-programming`, and keep the `.cpp` file inside it. Do not use `C:\Users` itself as the workspace/source folder.
+3. Remove any custom **CPOS: Compile Commands** override unless you need it. The default Windows command puts the executable in CPOS's writable build directory. If you keep an override, use the `{output}` placeholder rather than a hard-coded path.
+4. Run **Run All** again. If it still fails, open **View → Output → CPOS** and confirm the `-o` target is under `%USERPROFILE%\.cpos-vscode\build`, not `C:\Users\<name>.exe`.
+
+Also check that antivirus/Controlled Folder Access has not blocked `g++.exe`; allow the compiler or choose a writable project folder if Windows reports `Permission denied` instead.
 
 ### Windows: Run All always shows `(no output)`
 

@@ -192,7 +192,7 @@
   },
   "scripts": {
     "compile": "tsc -p ./",
-    "test": "npm run compile && node --test out/java.test.js",
+    "test": "npm run compile && node --test out/*.test.js",
     "watch": "tsc -watch -p ./",
     "package": "npm run compile && vsce package",
     "publish": "vsce publish"

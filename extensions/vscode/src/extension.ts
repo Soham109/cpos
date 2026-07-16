@@ -10,6 +10,7 @@ import {
   javaSubmissionCode,
   materializeJavaTemplate
 } from "./java";
+import { expandCommand, quoteShellPath } from "./command";
 
 type CapturedProblem = {
   platform: string;
@@ -2001,42 +2002,6 @@ function languageForFile(source: string): string {
   const ext = path.extname(source).slice(1);
   const match = Object.entries(DEFAULT_COMMANDS).find(([, value]) => value.extension === ext);
   return match?.[0] ?? resolveDefaultLanguage();
-}
-
-function expandCommand(
-  command: string,
-  source: string,
-  outputName: string,
-  buildDir: string,
-  className = path.parse(source).name
-): string {
-  // On Windows use full absolute path for .exe so cmd.exe finds the binary
-  // even if the current-directory PATH lookup doesn't work as expected.
-  const exeExpand = process.platform === "win32"
-    ? quoteShellPath(path.join(buildDir, `${outputName}.exe`))
-    : `${outputName}.exe`;
-  // Replace compound tokens before `{output}` so we never produce `"Hello".exe`.
-  return command
-    .replaceAll("{output}.jar", `${outputName}.jar`)
-    .replaceAll("{output}.exe", exeExpand)
-    .replaceAll("{source}", quoteShellPath(source))
-    .replaceAll("{output}", outputName)
-    .replaceAll("{dir}", quoteShellPath(buildDir))
-    .replaceAll("{classname}", outputName === className ? outputName : quoteShellPath(className));
-}
-
-/** Quote filesystem paths for the platform shell. */
-function quoteShellPath(value: string): string {
-  if (process.platform === "win32") {
-    // cmd.exe + MinGW/Python: stray quotes become part of filenames/paths on Windows.
-    if (!needsWindowsQuoting(value)) return value;
-    return `"${value.replace(/"/g, '""')}"`;
-  }
-  return `'${value.replaceAll("'", "'\\''")}'`;
-}
-
-function needsWindowsQuoting(value: string): boolean {
-  return /[\s"&|<>^()]/.test(value);
 }
 
 function runShell(
