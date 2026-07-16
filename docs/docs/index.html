@@ -936,6 +936,19 @@ codeforces = <span class="hl">"your_handle"</span></code></pre>
           the Homebrew GNU compiler.
         </p>
 
+        <h3>Windows: <code>ld.exe: cannot open output file ...exe: Invalid argument</code></h3>
+        <p>
+          This is an executable output-path problem, not an error in your C++ solution. Update the
+          CPOS VS Code extension to the latest version (0.3.23+ contains the Windows quoting fix),
+          then run <strong>Developer: Reload Window</strong>. Open a writable project folder such as
+          <code>C:\Users\&lt;you&gt;\Documents\competitive-programming</code> rather than using
+          <code>C:\Users</code> itself, and remove any custom <strong>CPOS: Compile Commands</strong>
+          override unless you need it. In <strong>View → Output → CPOS</strong>, the compile command's
+          <code>-o</code> target should be inside CPOS's build directory, not
+          <code>C:\Users\&lt;name&gt;.exe</code>. If Windows reports <code>Permission denied</code>, also
+          check antivirus or Controlled Folder Access permissions for <code>g++.exe</code>.
+        </p>
+
         <h3>Submit does nothing</h3>
         <ol>
           <li>Companion installed and enabled in Chrome/Edge/Brave (or Firefox source install)?</li>
