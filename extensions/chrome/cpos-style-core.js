@@ -711,6 +711,12 @@
         background: ${p.panel2} !important; color: ${p.fg} !important;
         border-color: ${p.border} !important;
       }
+      .prettyprint .pln, .prettyprint .pun {
+        color: ${p.fg} !important;
+      }
+      .prettyprint .com {
+        color: ${p.dim} !important;
+      }
     `;
   }
 
@@ -768,6 +774,9 @@
       .verdict-rejected, .verdict-failed, .cc-rejected, .rejected { color: ${p.bad} !important; }
       .verdict-waiting, .verdict-testing { color: ${p.warn} !important; }
       .alert, .error { color: ${p.bad} !important; }
+      .legendary-user-first-letter {
+        color: ${p.fg} !important;
+      }
     `;
   }
 
