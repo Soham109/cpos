@@ -4604,6 +4604,22 @@ class CposActionsProvider implements vscode.WebviewViewProvider {
 
   function render() {
     const app = document.getElementById("app");
+
+    // Full re-renders (e.g. triggered by the once-a-minute CF contest-list
+    // refresh via postState -> "state" message) recreate every element in
+    // #app, which resets scroll position. Save the active tab's scroll
+    // offset and restore it after the rebuild so an in-progress read of a
+    // long statement isn't yanked back to the top.
+    const scrollSelector = {
+      statement: ".statement-view-wrapper",
+      solution: ".sol-wrapper",
+      compete: ".cmp-wrap",
+      config: ".config-wrapper",
+      tests: ".tests-list"
+    }[activeTab];
+    const prevScrollEl = scrollSelector ? app.querySelector(scrollSelector) : null;
+    const prevScrollTop = prevScrollEl ? prevScrollEl.scrollTop : 0;
+
     let body = "";
     // Build the active tab's body defensively: a throw here must NEVER leave the
     // panel blank. If a tab-builder fails, fall back to the Tests view (and show
@@ -4651,6 +4667,12 @@ class CposActionsProvider implements vscode.WebviewViewProvider {
         window.MathJax.typesetPromise([app.querySelector('.statement-view')]).catch(function(){});
       }
     }
+
+    if (scrollSelector) {
+      const nextScrollEl = app.querySelector(scrollSelector);
+      if (nextScrollEl) nextScrollEl.scrollTop = prevScrollTop;
+    }
+
     scheduleResponsiveChrome();
   }
 
