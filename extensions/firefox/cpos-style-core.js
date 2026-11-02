@@ -712,12 +712,22 @@
         background: ${p.panel2} !important; color: ${p.fg} !important;
         border-color: ${p.border} !important;
       }
-      .prettyprint .pln, .prettyprint .pun {
+      /* prettify.css paints each token span with a light-page palette (#000,
+         #008, #606, #660...), which overrides the colour set on the <pre>.
+         Remap every token class onto the theme so code reads on any theme. */
+      .prettyprint .pln, .prettyprint .pun,
+      .prettyprint .opn, .prettyprint .clo {
         color: ${p.fg} !important;
       }
       .prettyprint .com {
         color: ${p.dim} !important;
       }
+      .prettyprint .kwd, .prettyprint .tag { color: ${p.accent} !important; }
+      .prettyprint .typ, .prettyprint .dec, .prettyprint .var,
+      .prettyprint .atn { color: ${p.info} !important; }
+      .prettyprint .str, .prettyprint .atv { color: ${p.ok} !important; }
+      .prettyprint .lit { color: ${p.warn} !important; }
+      .prettyprint .fun { color: ${p.bad} !important; }
     `;
   }
 
@@ -775,9 +785,31 @@
       .verdict-rejected, .verdict-failed, .cc-rejected, .rejected { color: ${p.bad} !important; }
       .verdict-waiting, .verdict-testing { color: ${p.warn} !important; }
       .alert, .error { color: ${p.bad} !important; }
-      .legendary-user-first-letter {
+      .verdict-accepted-challenged, .verdict-successful-challenge { color: ${p.ok} !important; }
+      .verdict-unsuccessful-challenge, .verdict-challenged { color: ${p.bad} !important; }
+    ` + cfColorHandles(p);
+  }
+
+  function cfColorHandles(p) {
+    // community.css colours handles with !important and loads after our
+    // document_start <style>, so equal specificity loses: prefix with html body.
+    const base = `
+      /* ---- Rated handles ------------------------------------------------ */
+      /* black parts of a handle (LGM first letter, 4000+ body, unrated,
+         admin) follow the theme text colour so they never vanish. */
+      html body .user-black, html body .user-admin, html body .user-4000,
+      html body .legendary-user-first-letter,
+      html body .user-legendary::first-letter {
         color: ${p.fg} !important;
       }
+    `;
+    if (p.isLight) return base;
+    // Dark themes: lift the tiers whose stock colour is too dark to read on a
+    // dark page, keeping each hue so the rank still reads at a glance.
+    return base + `
+      html body .user-blue { color: #7f8cff !important; }
+      html body .user-green { color: #4fbf4f !important; }
+      html body .user-violet { color: #d36ad3 !important; }
     `;
   }
 
@@ -863,11 +895,21 @@
     return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
   }
 
+  // Approximate 0..1 lightness of a #rrggbb colour (0 when not hex), so a
+  // light theme is detected even when its name does not say "light".
+  function luminance(hex) {
+    const m = /^#?([0-9a-f]{6})$/i.exec(hex || "");
+    if (!m) return 0;
+    const n = parseInt(m[1], 16);
+    return (0.2126 * ((n >> 16) & 255) + 0.7152 * ((n >> 8) & 255) + 0.0722 * (n & 255)) / 255;
+  }
+
   // Resolve a themes.js theme object into a flat, derived palette the colour
   // sections consume. Adds stripe/hover/okDim and an accentOn that always reads.
   function buildPalette(theme) {
     const t = theme || {};
-    const isLight = (t.name || "").toLowerCase().indexOf("light") !== -1;
+    const isLight = (t.name || "").toLowerCase().indexOf("light") !== -1 ||
+      luminance(t["--bg"]) > 0.5;
     const panel = t["--panel"] || "#161b22";
     return {
       bg: t["--bg"] || "#0d1117",
@@ -882,6 +924,8 @@
       ok: t["--ok"] || "#3fb950",
       bad: t["--bad"] || "#f85149",
       warn: t["--warn"] || "#d29922",
+      info: t["--cf"] || t["--accent"] || "#6cb6ff",
+      isLight: isLight,
       // Derived shades — direction flips for light themes so they stay subtle.
       stripe: isLight ? shade(panel, -8) : shade(panel, 8),
       hover: isLight ? shade(panel, -16) : shade(panel, 16),
