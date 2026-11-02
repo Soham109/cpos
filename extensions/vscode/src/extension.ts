@@ -4577,6 +4577,24 @@ class CposActionsProvider implements vscode.WebviewViewProvider {
 
   function render() {
     const app = document.getElementById("app");
+
+    // Full re-renders recreate every element in #app, which resets scroll
+    // position. They happen on every "state" message for non-Tests tabs, and
+    // the browser companion's challenge sync posts one about once a minute
+    // (plus the CF contest-list refresh it can trigger). Save the active tab's
+    // scroll offset and restore it after the rebuild so an in-progress read of
+    // a long statement isn't yanked back to the top. A different file starts
+    // at the top.
+    const scrollSelector = {
+      statement: ".statement-view-wrapper",
+      solution: ".sol-wrapper",
+      compete: ".cmp-wrap",
+      config: ".config-wrapper",
+      tests: ".tests-list"
+    }[activeTab];
+    const prevScrollEl = scrollSelector ? app.querySelector(scrollSelector) : null;
+    const prevScrollTop = prevScrollEl && renderedSource === state.source ? prevScrollEl.scrollTop : 0;
+
     let body = "";
     // Build the active tab's body defensively: a throw here must NEVER leave the
     // panel blank. If a tab-builder fails, fall back to the Tests view (and show
@@ -4619,11 +4637,23 @@ class CposActionsProvider implements vscode.WebviewViewProvider {
     });
     autoResizeTextareas(app);
 
+    const nextScrollEl = scrollSelector ? app.querySelector(scrollSelector) : null;
+    if (nextScrollEl) nextScrollEl.scrollTop = prevScrollTop;
+    const restoredScrollTop = nextScrollEl ? nextScrollEl.scrollTop : 0;
+
     if (activeTab === "statement") {
       if (window.MathJax && typeof window.MathJax.typesetPromise === "function") {
-        window.MathJax.typesetPromise([app.querySelector('.statement-view')]).catch(function(){});
+        window.MathJax.typesetPromise([app.querySelector('.statement-view')]).then(function () {
+          // Raw TeX can be shorter than typeset math, so the restore above may
+          // have been clamped. Apply it again once the math has its real height,
+          // unless the user scrolled in the meantime.
+          if (nextScrollEl && nextScrollEl.isConnected && nextScrollEl.scrollTop === restoredScrollTop) {
+            nextScrollEl.scrollTop = prevScrollTop;
+          }
+        }).catch(function(){});
       }
     }
+
     scheduleResponsiveChrome();
   }
 
@@ -4956,6 +4986,10 @@ class CposActionsProvider implements vscode.WebviewViewProvider {
         }
       }
       const sameFile = incoming.source === renderedSource && renderedSource !== undefined;
+      // Periodic syncs (the browser companion's challenge poll, the CF contest
+      // refresh) usually post a state identical to the one on screen. Rebuilding
+      // the panel then only throws away scroll, focus and in-progress input.
+      if (sameFile && JSON.stringify(incoming) === JSON.stringify(state)) return;
       state = incoming;
       const shown = state.tabs || { statement: true, solution: true, compete: true };
       if (
