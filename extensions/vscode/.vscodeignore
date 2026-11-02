@@ -1,6 +1,7 @@
 src/**
 tsconfig.json
-*.map
+**/*.map
+out/*.test.js
 node_modules/**
 *.vsix
 !media/**

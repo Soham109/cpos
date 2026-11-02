@@ -5,13 +5,22 @@ All notable changes to CPOS are documented here. Components are versioned indepe
 | Component | Current version | Version file |
 | --- | --- | --- |
 | Terminal app | 0.3.0 | `Cargo.toml` |
-| VS Code extension | 0.6.2 | `extensions/vscode/package.json` |
-| Browser companion (Chrome) | 0.17.0 | `extensions/chrome/manifest.json` |
-| Browser companion (Firefox) | 0.17.0 | `extensions/firefox/manifest.json` |
+| VS Code extension | 0.6.3 | `extensions/vscode/package.json` |
+| Browser companion (Chrome) | 0.17.1 | `extensions/chrome/manifest.json` |
+| Browser companion (Firefox) | 0.17.1 | `extensions/firefox/manifest.json` |
 
 Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
+
+## VS Code extension 0.6.3 · Browser companions 0.17.1 (2026-11-02)
+
+### Fixed
+- **VS Code: the panel no longer jumps to the top every minute** ([#33](https://github.com/Soham109/cpos/issues/33)). The browser companion's challenge sync posts the panel state about once a minute, and every post rebuilt the panel. Identical updates are now skipped, and real rebuilds keep the scroll position of the statement or solution you are reading (a different problem still starts at the top). Scroll is restored again after MathJax finishes drawing math. Scroll preservation contributed by [sumedhabhattacharya0711-spec](https://github.com/sumedhabhattacharya0711-spec) in [#34](https://github.com/Soham109/cpos/pull/34).
+- **VS Code: timed-out runs no longer leave your program running.** On timeout the extension now stops the whole process tree (the process group on macOS and Linux, `taskkill /T` on Windows), not just the shell. Applies to sample runs, browser editor runs, the visualizer and compiles. Each run still reports exactly one result.
+- **Browser companions: Codeforces pop-ups are readable under every theme** ([#35](https://github.com/Soham109/cpos/issues/35)). Test details, checker logs and other Codeforces dialogs had a transparent background, so the table behind showed through. They now get a solid themed panel, border and close button in all themes.
+- **Browser companions: Codeforces colors match the theme** ([#31](https://github.com/Soham109/cpos/issues/31)). Submitted code now colors every token type from the theme instead of Codeforces' light-page colors, and black handle parts (the LGM first letter, 4000+, unrated and admin handles) follow the theme text color. On dark themes, blue, green and violet handles are lifted so they stay readable. Initial fix contributed by [Thundercloud12](https://github.com/Thundercloud12) in [#32](https://github.com/Soham109/cpos/pull/32).
+- **Browser companions: the Neutral (light) theme is detected as light.** It was treated as dark, which made zebra rows and row hover plain white.
 
 ## Terminal app 0.3.0 · Browser companions 0.17.0 — 2026-07-05
 
