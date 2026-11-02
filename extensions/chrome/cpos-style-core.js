@@ -454,7 +454,7 @@
       /* ---- Base canvas -------------------------------------------------- */
       html, body { background: ${p.bg} !important; color: ${p.fg} !important; }
       #body, #pageContent, .content-with-sidebar, .container, .main, #content,
-      .compact-problemset, .datatable, #facebox .content {
+      .compact-problemset, .datatable {
         background: transparent !important; color: ${p.fg} !important;
       }
       hr { border-color: ${p.border} !important; background: ${p.border} !important; }
@@ -667,6 +667,29 @@
     `;
   }
 
+  function cfColorModals(p) {
+    return `
+      /* ---- Modals (facebox) --------------------------------------------- */
+      /* Every CF pop-up (submission details, checker log, test input/output,
+         confirmations) is a facebox: #facebox .popup > .content. CF paints the
+         surface on .content (#fff); it must stay opaque or the page table bleeds
+         through the dialog. The generic table rules above would also clear the
+         cells inside it, so give the dialog its own solid panel. */
+      html body #facebox .popup {
+        background: transparent !important;
+        box-shadow: 0 1px 2px ${p.shadow}, 0 12px 32px ${p.shadow} !important;
+      }
+      html body #facebox .content {
+        background: ${p.panel} !important; color: ${p.fg} !important;
+        box-shadow: inset 0 0 0 1px ${p.border} !important;
+      }
+      html body #facebox .close {
+        background: ${p.panel2} !important;
+      }
+      ${p.light ? "" : "html body #facebox .close img { filter: invert(1) !important; }"}
+    `;
+  }
+
   function cfColorProblem(p) {
     return `
       /* ---- Problem statement + sample tests ----------------------------- */
@@ -860,7 +883,15 @@
     const t = theme || {};
     const isLight = (t.name || "").toLowerCase().indexOf("light") !== -1;
     const panel = t["--panel"] || "#161b22";
+    // Surface lightness by luminance, not by name: the light preset is called
+    // "Neutral", so the name check alone misses it.
+    const rgb = /^#?([0-9a-f]{6})$/i.exec(panel);
+    const n = rgb ? parseInt(rgb[1], 16) : 0;
+    const lightSurface = rgb
+      ? (0.299 * ((n >> 16) & 255) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255)) / 255 > 0.5
+      : isLight;
     return {
+      light: lightSurface,
       bg: t["--bg"] || "#0d1117",
       panel: panel,
       panel2: t["--panel-2"] || "#1c2128",
@@ -876,7 +907,9 @@
       // Derived shades — direction flips for light themes so they stay subtle.
       stripe: isLight ? shade(panel, -8) : shade(panel, 8),
       hover: isLight ? shade(panel, -16) : shade(panel, 16),
-      okDim: alpha(t["--ok"] || "#3fb950", isLight ? 0.1 : 0.14)
+      okDim: alpha(t["--ok"] || "#3fb950", isLight ? 0.1 : 0.14),
+      // Modal drop shadow: soft on light pages, deeper on dark ones.
+      shadow: lightSurface ?"rgba(0,0,0,0.16)" : "rgba(0,0,0,0.5)"
     };
   }
 
@@ -903,7 +936,7 @@
     return [
       `:root{${rootVars(p)}}`,
       cfColorBase(p), cfColorHeader(p), cfColorPanels(p), cfColorTables(p),
-      cfColorProblem(p), cfColorCode(p), cfColorControls(p), cfColorMisc(p)
+      cfColorModals(p), cfColorProblem(p), cfColorCode(p), cfColorControls(p), cfColorMisc(p)
     ].join("\n");
   }
   function buildThemeCses(theme) {
