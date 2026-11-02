@@ -2,7 +2,6 @@ import * as http from "node:http";
 import * as os from "node:os";
 import * as path from "node:path";
 import { promises as fs, existsSync, readFileSync, statSync } from "node:fs";
-import { spawn } from "node:child_process";
 import * as vscode from "vscode";
 import {
   javaClassName,
@@ -10,6 +9,7 @@ import {
   javaSubmissionCode,
   materializeJavaTemplate
 } from "./java";
+import { runProcess, type ProcessResult } from "./process";
 
 type CapturedProblem = {
   platform: string;
@@ -2044,36 +2044,9 @@ function runShell(
   input: string,
   cwd: string,
   timeoutMs: number
-): Promise<{ code: number; stdout: string; stderr: string; timedOut: boolean; timeMs: number }> {
-  return new Promise((resolve, reject) => {
-    const start = Date.now();
-    const shell = shellForRun();
-    const child = spawn(shell.file, shell.args(command), {
-      cwd,
-      env: processEnvForRun(),
-      windowsHide: true
-    });
-    let stdout = "";
-    let stderr = "";
-    let timedOut = false;
-    const timeout = setTimeout(() => {
-      timedOut = true;
-      child.kill();
-    }, timeoutMs);
-
-    child.stdout.on("data", (chunk) => (stdout += chunk.toString()));
-    child.stderr.on("data", (chunk) => (stderr += chunk.toString()));
-    child.on("error", (error) => {
-      clearTimeout(timeout);
-      reject(error);
-    });
-    child.on("close", (code) => {
-      clearTimeout(timeout);
-      resolve({ code: code ?? 1, stdout, stderr, timedOut, timeMs: Date.now() - start });
-    });
-    child.stdin.on("error", () => undefined);
-    child.stdin.end(input);
-  });
+): Promise<ProcessResult> {
+  const shell = shellForRun();
+  return runProcess(shell.file, shell.args(command), { cwd, env: processEnvForRun(), input, timeoutMs });
 }
 
 async function openProblem(): Promise<void> {
